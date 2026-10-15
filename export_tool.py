@@ -8,6 +8,13 @@ import names as N
 
 # Per-market reliability, taken from the measured holdout in MODEL.md.
 # These drive the tool's own warnings rather than sitting in a footnote.
+#
+# Totals and the overtime price are deliberately absent. Both are right on
+# average and neither carries information -- the expected total explains
+# 0.33% of the variance in real totals (MODEL.md section 15) and the
+# overtime price scores slightly worse than quoting the league rate
+# (section 18). A market that cannot be priced honestly is not listed here,
+# and the page therefore cannot offer a price box for it.
 MARKETS = {
     "moneyline": {"label": "Moneyline", "grade": "reference",
                   "note": "Model log loss 0.682 against the actual posted "
@@ -20,18 +27,6 @@ MARKETS = {
     # the calibration slope at a book's posted line is 0.28 against the
     # moneyline's 0.78 -- a 56% from this model is really about 52%. Graded
     # reference so a large apparent edge can never read as a play.
-    "over_55": {"label": "Over 5.5 goals", "grade": "reference",
-                "note": "Calibrated on average (55.6% vs 57.1%) but close to "
-                        "uninformative: calibration slope 0.28, and the "
-                        "model is right on only 51.2% of the games where it "
-                        "disagrees with the posted total."},
-    "over_65": {"label": "Over 6.5 goals", "grade": "reference",
-                "note": "Calibrated on average (45.5% vs 46.7%) but close to "
-                        "uninformative: the expected total explains 0.33% of "
-                        "the variance in real totals."},
-    "over_45": {"label": "Over 4.5 goals", "grade": "biased",
-                "note": "Predicted 77.1% vs 80.9% actual, outside the margin "
-                        "of error. Runs low; do not bet unders off this."},
     "puckline": {"label": "Home -1.5", "grade": "usable",
                  "note": "The sharpest game-level market here: it removes "
                          "2.79% of the base rate's error against the "
@@ -43,11 +38,6 @@ MARKETS = {
     # game totals: a Brier skill of -0.0019 means it is slightly worse than
     # simply quoting the league's overtime rate, and a slope of 0.34 means
     # the number moves without meaning it.
-    "ot": {"label": "Game goes to OT", "grade": "reference",
-           "note": "Right on average (25.0% against 24.5% actual) but it "
-                   "carries almost no information: slightly worse than "
-                   "quoting the league rate, and a calibration slope of "
-                   "0.34 against the moneyline's 0.79."},
     "sog_15": {"label": "Over 1.5 shots", "grade": "primary",
                "note": "Best market available: 13.3% of baseline error removed, "
                        "and beats a player's own average at t=8.3."},

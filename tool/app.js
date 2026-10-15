@@ -480,10 +480,15 @@
       stat("Said overtime", pct(g.ot),
            g.wentot ? "went to OT ✓" : "ended in regulation");
     } else {
+      // The expected total and the overtime price are not shown. Both are
+      // right on average and neither moves with the game: the total
+      // explains 0.33% of the variance in real totals, and the overtime
+      // price scores slightly worse than quoting the league rate. A number
+      // on a card implies it says something about this game, and those two
+      // do not. The finished-game panels below still show what was
+      // predicted against what happened, because that is the record.
       stat("Expected score", g.la.toFixed(1) + " – " + g.lh.toFixed(1),
            g.a + " – " + g.h);
-      stat("Total goals", g.tot.toFixed(1), "over 5.5: " + pct(g.o55));
-      stat("Overtime", pct(g.ot), "finishes level");
       stat("Win by 2+", pct(g.pl), name(g.h));
     }
     card.appendChild(stats);
@@ -526,9 +531,6 @@
       var id = g.d + "|" + g.a + g.h;
       tb.appendChild(priceRow(name(g.h) + " win", g.ph, "g|" + id + "|ph", MK.moneyline.grade));
       tb.appendChild(priceRow(name(g.a) + " win", g.pa, "g|" + id + "|pa", MK.moneyline.grade));
-      tb.appendChild(priceRow("Over 5.5 goals", g.o55, "g|" + id + "|o55", MK.over_55.grade));
-      tb.appendChild(priceRow("Over 6.5 goals", g.o65, "g|" + id + "|o65", MK.over_65.grade));
-      tb.appendChild(priceRow("Goes to overtime", g.ot, "g|" + id + "|ot", MK.ot.grade));
       tb.appendChild(priceRow(name(g.h) + " −1.5", g.pl, "g|" + id + "|pl", MK.puckline.grade));
       t.appendChild(tb);
       w.appendChild(t);
