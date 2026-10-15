@@ -32,10 +32,22 @@ MARKETS = {
     "over_45": {"label": "Over 4.5 goals", "grade": "biased",
                 "note": "Predicted 77.1% vs 80.9% actual, outside the margin "
                         "of error. Runs low; do not bet unders off this."},
-    "puckline": {"label": "Home -1.5", "grade": "biased",
-                 "note": "Predicted 27.4% vs 30.3% actual. Runs low on home blowouts."},
-    "ot": {"label": "Game goes to OT", "grade": "usable",
-           "note": "Predicted 25.0% vs 24.5% actual after the tie-weight fix."},
+    "puckline": {"label": "Home -1.5", "grade": "usable",
+                 "note": "The sharpest game-level market here: it removes "
+                         "2.79% of the base rate's error against the "
+                         "moneyline's 1.81%, and all seven probability bands "
+                         "land inside their intervals. It used to sit three "
+                         "points low; a trailing-window level correction "
+                         "now closes that."},
+    # Calibrated on average and close to uninformative, the same shape as
+    # game totals: a Brier skill of -0.0019 means it is slightly worse than
+    # simply quoting the league's overtime rate, and a slope of 0.34 means
+    # the number moves without meaning it.
+    "ot": {"label": "Game goes to OT", "grade": "reference",
+           "note": "Right on average (25.0% against 24.5% actual) but it "
+                   "carries almost no information: slightly worse than "
+                   "quoting the league rate, and a calibration slope of "
+                   "0.34 against the moneyline's 0.79."},
     "sog_15": {"label": "Over 1.5 shots", "grade": "primary",
                "note": "Best market available: 13.3% of baseline error removed, "
                        "and beats a player's own average at t=8.3."},

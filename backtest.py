@@ -18,6 +18,36 @@ SEASONS = ["20222023", "20232024", "20242025", "20252026", "20262027"]
 CLEAN = {"20252026", "20262027"}   # untouched by the xG fit
 
 
+def causal_offset(p, y, window=400, warmup=150, grid=np.arange(-0.6, .61, .02)):
+    """A log-odds shift per game, fitted on the trailing window only.
+
+    The puck line is the sharpest game-level market here -- it removes 2.79%
+    of the base rate's error against the moneyline's 1.81%, and every
+    probability band lands inside its interval -- but it sits about three
+    points low, because the score matrix under-produces two-goal wins. The
+    ordering is right and the centre is off, so the correction is a level
+    shift rather than a refit, and it is applied in log-odds because adding
+    a flat three points to a 10% price and a 50% price is not the same
+    adjustment. Game N is only ever shifted by games 1..N-1.
+    """
+    p, y = np.clip(np.asarray(p, float), 1e-6, 1 - 1e-6), np.asarray(y, int)
+    z = np.log(p / (1 - p))
+    out = np.empty_like(p)
+    for i in range(len(p)):
+        if i < warmup:
+            out[i] = p[i]
+            continue
+        zz, yy = z[max(0, i - window):i], y[max(0, i - window):i]
+        best, bll = 0.0, np.inf
+        for d in grid:
+            q = 1 / (1 + np.exp(-(zz + d)))
+            ll = -np.mean(yy * np.log(q) + (1 - yy) * np.log(1 - q))
+            if ll < bll:
+                best, bll = d, ll
+        out[i] = 1 / (1 + np.exp(-(z[i] + best)))
+    return out
+
+
 def causal_temperature(p_raw, y, warmup=150, shrink_k=200.0):
     """Expanding-window temperature scaling, using only prior games.
 
@@ -128,6 +158,10 @@ def run(df):
             out[c] = pr[c].values
         out["p_home_cal"] = causal_temperature(out.p_home.values,
                                                out.home_win.values)
+        out["p_home_m15_raw"] = out.p_home_m15.values
+        out["p_home_m15"] = causal_offset(
+            out.p_home_m15.values,
+            (out.home_score - out.away_score >= 2).astype(int).values)
         out["n_train"] = len(tr)
         out["tau"] = m.tau
         out["kappa"] = m.kappa

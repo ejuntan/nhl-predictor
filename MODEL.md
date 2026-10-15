@@ -1116,3 +1116,65 @@ Saves is now the second-best market in this project, behind skater shots and
 far ahead of anything game-level. It is not yet on the page: that needs a
 live path for the probable starter's expected shots faced, which does not
 exist yet.
+
+## 18. The puck line and the overtime price (measured 2026-10-16)
+
+The same test §15 applied to totals, applied to the two remaining derived
+markets. Calibration on average cannot tell a forecast from a constant, so
+each market gets a Brier skill score against always quoting the base rate
+and a calibration slope.
+
+| market | predicted | actual | Brier skill | slope | bands inside |
+|---|---|---|---|---|---|
+| **home −1.5** | .2726 | .3023 | **+0.0279** | +1.111 | 7/7 |
+| moneyline | .5431 | .5229 | +0.0181 | +0.785 | 8/8 |
+| over 5.5 | .5555 | .5708 | +0.0005 | +0.588 | 5/5 |
+| **goes to overtime** | .2497 | .2452 | **−0.0019** | +0.338 | 5/6 |
+
+The page had these two graded exactly backwards.
+
+### The puck line is the sharpest market on the card
+
+It removes 2.79% of the base rate's error, more than the moneyline's 1.81%,
+every probability band lands inside its interval, and the slope above 1 says
+it is if anything too timid. Its one fault was level: it said 27.3% and the
+home side won by two or more 30.2% of the time, the same sign in both
+holdout seasons.
+
+That is the §17 fault again — ordering right, centre off — so it takes the
+§17 fix: a trailing-window shift, applied in log-odds because adding a flat
+three points to a 10% price and a 50% price are not the same adjustment, and
+fitted only on games already played.
+
+| | predicted | actual | Brier | skill | slope |
+|---|---|---|---|---|---|
+| as shipped | .2726 | .3023 | .20504 | +0.0279 | +1.111 |
+| with the offset | .2920 | .3023 | .20470 | +0.0264 | +0.947 |
+
+The level gap closes from −0.0297 to −0.0103 and the slope moves to 0.947.
+Brier skill gives up 0.0015, which is the honest trade: a market quoted
+three points low is one where the wrong side always looks like the value,
+and that matters more on a page built to compare a model price to a book
+price. **Grade raised from `biased` to `usable`.**
+
+### Overtime is decoration
+
+Right on average — the §9 tie retune did its job, 25.0% against 24.5% — and
+close to uninformative. A Brier skill of −0.0019 means it is *slightly worse
+than quoting the league's overtime rate*, and a slope of 0.338 means the
+number moves without meaning it. Its spread is sd 0.029 on a quantity whose
+base rate is 24.5%.
+
+This is the same diagnosis as game totals and for the same reason: whether a
+game is level after sixty minutes is nearly all variance. **Grade lowered
+from `usable` to `reference`**, so the UI forces SKIP.
+
+### The freeze held, and said so
+
+Changing `backtest.py` and `live.py` tripped the code-hash check in
+`freeze.py`, which is what it is for. The moneyline is untouched: `p_home`,
+`exp_total`, `p_ot` and `p_over_55` match the previous build to six decimals
+across all 4,038 backtested games, and only `p_home_m15` moved (mean 0.039).
+Re-frozen as **`nhl-v2-20261015`** carrying `moneyline_unchanged_since:
+nhl-v2-20261014`, so the 60 predictions already logged remain a continuous
+prospective record for the market they were logged to test.

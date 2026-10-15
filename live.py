@@ -143,6 +143,29 @@ def main(days=8):
     out = pd.concat([up2.reset_index(drop=True), pr.reset_index(drop=True)],
                     axis=1)
 
+    # The puck line sits about three points low (MODEL.md section 18), and
+    # the same trailing-window shift the backtest applies is carried here so
+    # the live price matches the one the page was graded on.
+    from backtest import causal_offset
+    hist = reg.sort_values(["date", "game_id"]).tail(600)
+    hp = model.predict(hist, scoring_mult=np.full(len(hist), mult),
+                       kappa_mult=np.full(len(hist), kmult))
+    hy = (hist.home_score - hist.away_score >= 2).astype(int).values
+    hz = np.log(np.clip(hp.p_home_m15.values, 1e-6, 1 - 1e-6)
+                / (1 - np.clip(hp.p_home_m15.values, 1e-6, 1 - 1e-6)))
+    best, bll = 0.0, np.inf
+    for d in np.arange(-0.6, 0.61, 0.02):
+        q = 1 / (1 + np.exp(-(hz + d)))
+        ll = -np.mean(hy * np.log(q) + (1 - hy) * np.log(1 - q))
+        if ll < bll:
+            best, bll = d, ll
+    zc = np.log(np.clip(out.p_home_m15.values, 1e-6, 1 - 1e-6)
+                / (1 - np.clip(out.p_home_m15.values, 1e-6, 1 - 1e-6)))
+    out["p_home_m15_raw"] = out.p_home_m15.values
+    out["p_home_m15"] = 1 / (1 + np.exp(-(zc + best)))
+    print(f"puck-line offset {best:+.3f} in log-odds "
+          f"({out.p_home_m15_raw.mean():.4f} -> {out.p_home_m15.mean():.4f})")
+
     # Elo, for a visible second opinion on each game.
     _, elo_now = elo_ratings(reg)
     out["elo_home"] = out.home.map(elo_now)

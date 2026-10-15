@@ -44,10 +44,17 @@ CONFIG = {
     "recalibration": False,
     "carry_stale_rating": True,
     "impute_ice_time": False,
+    "puckline_causal_offset": True,
+    # The moneyline is byte-identical to nhl-v2-20261014: p_home, exp_total,
+    # p_ot and p_over_55 all match to six decimals across the whole backtest.
+    # Only p_home_m15 moved, so the prospective moneyline record logged
+    # under the previous id continues without a break.
+    "moneyline_unchanged_since": "nhl-v2-20261014",
     "notes": "per-60 rates from shift charts; causal tie retune; a game with "
              "no published shift chart keeps the team's carried-forward "
              "rating rather than a zero-filled one; no goalie or lineup "
-             "extras (every one measured neutral in steps 1-3)",
+             "extras (every one measured neutral in steps 1-3); a trailing "
+             "log-odds offset on the puck line, which ran three points low",
 }
 
 
