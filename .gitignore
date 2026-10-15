@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+
+# The pipeline's working data stays local. nhl.sqlite3 alone is 144 MB and
+# player_games.pkl is 43 MB; committing them would exceed GitHub's limits
+# and bloat the repo on every daily refresh. Everything here is rebuildable
+# from the NHL's public API with fetch.py.
+data/*.sqlite3
+data/*.pkl
+data/*.log
+data/frozen_log.csv.bak
+
+# Dashboard CSVs are regenerated too; the one file the web service needs is
+# out/tool_data.json, which is whitelisted below.
+out/*.csv
+!out/tool_data.json

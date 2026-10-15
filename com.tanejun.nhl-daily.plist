@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Optional second layer: runs the data refresh whether or not the Claude
+     desktop app is open. It keeps data/ and tool/index.html current; it
+     cannot republish the artifact, because publishing needs a Claude
+     session. Install with:
+       cp com.tanejun.nhl-daily.plist ~/Library/LaunchAgents/
+       launchctl load ~/Library/LaunchAgents/com.tanejun.nhl-daily.plist
+     Remove with:
+       launchctl unload ~/Library/LaunchAgents/com.tanejun.nhl-daily.plist -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tanejun.nhl-daily</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/tane-jun/nhl_predictor/daily.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/tane-jun/nhl_predictor</string>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>8</integer>
+    <key>Minute</key><integer>30</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/tane-jun/nhl_predictor/data/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/tane-jun/nhl_predictor/data/launchd.err.log</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

@@ -1,0 +1,19 @@
+# Render.com blueprint — https://render.com/docs/blueprint-spec
+# Deploy: push this repo to GitHub, then on Render: New -> Blueprint and
+# point it at the repo. Nothing to configure; there are no secrets.
+#
+# This serves the page that ./daily.sh builds. The model itself is NOT
+# rebuilt here: the pipeline needs a 144 MB SQLite database that cannot be
+# committed, so the built page is the deploy artifact. Refresh with
+# ./publish.sh, which rebuilds locally and pushes; Render redeploys on push.
+services:
+  - type: web
+    name: nhl-daily-predictions
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-web.txt
+    startCommand: gunicorn app:app --worker-class gthread --workers 2 --threads 4 --timeout 60 --bind 0.0.0.0:$PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"

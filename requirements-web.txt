@@ -1,0 +1,6 @@
+# Only what the web server needs. Serving a prebuilt HTML file does not
+# require pandas, scikit-learn or scipy, so Render builds in seconds
+# instead of minutes. The modelling stack is in requirements.txt and is
+# only needed on the machine that runs the pipeline.
+flask==3.0.3
+gunicorn==22.0.0

@@ -1,0 +1,27 @@
+{
+  "id": "nhl-v2-20261014",
+  "frozen_at": "2026-10-14T15:58:31+00:00",
+  "config": {
+    "frame": "per60",
+    "tie_retune": true,
+    "scoring_mult": true,
+    "extra_features": [],
+    "recalibration": false,
+    "carry_stale_rating": true,
+    "impute_ice_time": false,
+    "notes": "per-60 rates from shift charts; causal tie retune; a game with no published shift chart keeps the team's carried-forward rating rather than a zero-filled one; no goalie or lineup extras (every one measured neutral in steps 1-3)"
+  },
+  "code": {
+    "model.py": "ad310123c82f107d",
+    "features.py": "8f755bfc68c7cfde",
+    "xg.py": "5aa0c2fd21e53bee",
+    "live.py": "5987d1bf8db9be75",
+    "backtest.py": "3c34b2581269f57d"
+  },
+  "trained_through": "2026-10-13",
+  "train_games": 5350,
+  "holdout_used_for_selection": [
+    "20252026",
+    "20262027"
+  ]
+}

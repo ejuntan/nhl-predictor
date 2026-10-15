@@ -1,0 +1,814 @@
+(function () {
+  "use strict";
+  var DATA = JSON.parse(document.getElementById("nhl-data").textContent);
+  var GAMES = DATA.games, PROPS = DATA.props, MK = DATA.markets;
+  var PAST = DATA.past || [], PASTP = DATA.pastProps || [];
+  var RECORD = DATA.record || { w: 0, l: 0, acc: 0 };
+  var LINES = DATA.lines || {}, BUCKETS = DATA.buckets || {};
+  var VP = DATA.valuePicks || null;
+  var LINE_AT = DATA.lineAt || "";
+  // Past days come first, then the upcoming slate.
+  var ALL = PAST.concat(GAMES);
+
+  var TEAM = {
+    ANA: "Anaheim", BOS: "Boston", BUF: "Buffalo", CAR: "Carolina",
+    CBJ: "Columbus", CGY: "Calgary", CHI: "Chicago", COL: "Colorado",
+    DAL: "Dallas", DET: "Detroit", EDM: "Edmonton", FLA: "Florida",
+    LAK: "Los Angeles", MIN: "Minnesota", MTL: "Montreal", NJD: "New Jersey",
+    NSH: "Nashville", NYI: "NY Islanders", NYR: "NY Rangers", OTT: "Ottawa",
+    PHI: "Philadelphia", PIT: "Pittsburgh", SEA: "Seattle", SJS: "San Jose",
+    STL: "St. Louis", TBL: "Tampa Bay", TOR: "Toronto", UTA: "Utah",
+    VAN: "Vancouver", VGK: "Vegas", WPG: "Winnipeg", WSH: "Washington"
+  };
+  var name = function (abbr) { return TEAM[abbr] || abbr; };
+
+  var state = {
+    day: null, odds: false, fmt: "am", bankroll: 1000, kelly: 0.25,
+    minEdge: 3, prices: {}
+  };
+
+  // ---------- storage (per viewer; can be unavailable) ----------
+  function load() {
+    try {
+      var raw = localStorage.getItem("nhl-daily-v1");
+      if (!raw) return;
+      var s = JSON.parse(raw);
+      ["odds", "fmt", "bankroll", "kelly", "minEdge"].forEach(function (k) {
+        if (s[k] !== undefined && s[k] !== null) state[k] = s[k];
+      });
+      if (s.prices && typeof s.prices === "object") state.prices = s.prices;
+    } catch (e) { /* private window or blocked storage */ }
+  }
+  var st = null;
+  function save() {
+    clearTimeout(st);
+    st = setTimeout(function () {
+      try {
+        localStorage.setItem("nhl-daily-v1", JSON.stringify({
+          odds: state.odds, fmt: state.fmt, bankroll: state.bankroll,
+          kelly: state.kelly, minEdge: state.minEdge, prices: state.prices
+        }));
+      } catch (e) { /* ignore */ }
+    }, 250);
+  }
+
+  // ---------- odds maths (checked in tool/mathtest.js) ----------
+  function toDecimal(raw) {
+    if (raw === null || raw === undefined || raw === "") return null;
+    // Sportsbook pages render the minus as U+2212 or a dash, and that is what
+    // lands in the field when a price is pasted. Normalise first, or "-110"
+    // silently becomes +110.
+    var txt = String(raw)
+      .replace(/[−‒–—―－]/g, "-")
+      .replace(/＋/g, "+")
+      .replace(/[^0-9+.-]/g, "");
+    var v = parseFloat(txt);
+    if (!isFinite(v) || v === 0) return null;
+    if (v >= 100 || v <= -100) return v > 0 ? 1 + v / 100 : 1 + 100 / (-v);
+    if (v > 1 && v < 100) return v;
+    return null;
+  }
+  function decToAmerican(d) {
+    if (!d || d <= 1) return null;
+    var p = 1 / d;
+    return p >= 0.5 ? -Math.round(100 * p / (1 - p)) : Math.round(100 * (1 - p) / p);
+  }
+  function fairOdds(p) {
+    if (!(p > 0 && p < 1)) return "—";
+    if (state.fmt === "dec") return (1 / p).toFixed(2);
+    var a = decToAmerican(1 / p);
+    return a === null ? "—" : (a > 0 ? "+" + a : String(a));
+  }
+  function evaluate(p, dec) {
+    if (!dec || !(p > 0 && p < 1)) return null;
+    var evPer1 = p * (dec - 1) - (1 - p);
+    var kf = (dec - 1) > 0 ? (p * dec - 1) / (dec - 1) : 0;
+    return {
+      edge: p - 1 / dec, ev100: evPer1 * 100,
+      stake: Math.max(0, kf) * state.kelly * state.bankroll
+    };
+  }
+  function verdict(ev, grade) {
+    if (!ev) return { cls: "chip-none", txt: "—" };
+    if (grade === "reference" || grade === "biased") return { cls: "chip-skip", txt: "SKIP" };
+    if (ev.edge * 100 < state.minEdge) return { cls: "chip-thin", txt: "THIN" };
+    if (grade === "caution") return { cls: "chip-thin", txt: "CARE" };
+    return { cls: "chip-play", txt: "PLAY" };
+  }
+
+  var pct = function (v) { return Math.round(v * 100) + "%"; };
+  var pct1 = function (v) { return (v * 100).toFixed(1) + "%"; };
+  var money = function (v) {
+    return "$" + v.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  };
+  var signed = function (v) { return (v >= 0 ? "+" : "") + v.toFixed(1); };
+  var signedInt = function (v) {
+    if (v === null || v === undefined) return "—";
+    return (v > 0 ? "+" : "") + v;
+  };
+
+  /** Plain-English strength of the lean, so a number is not the only cue. */
+  function leanWord(p) {
+    var m = Math.max(p, 1 - p);
+    if (m < 0.54) return "near a coin flip";
+    if (m < 0.60) return "a slight lean";
+    if (m < 0.67) return "a clear favourite";
+    return "a strong favourite";
+  }
+
+  // ---------- small DOM helpers ----------
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function td(tr, text, cls) { var c = el("td", cls, text); tr.appendChild(c); return c; }
+  // A posted price fills the box so the calculator is answering about a
+  // real number, not a blank. A number the viewer typed always wins.
+  function seedPrices() {
+    Object.keys(LINES).forEach(function (k) {
+      var L = LINES[k];
+      var put = function (suffix, v) {
+        if (v === null || v === undefined) return;
+        var key = "g|" + k + "|" + suffix;
+        if (!state.prices[key]) state.prices[key] = String(v);
+      };
+      put("ph", L.hml);
+      put("pa", L.aml);
+      if (L.tot === 5.5) { put("o55", L.oo); }
+      if (L.tot === 6.5) { put("o65", L.oo); }
+    });
+  }
+
+  function oddsInput(key, onChange) {
+    var i = el("input", "odds-in");
+    i.type = "text";
+    i.placeholder = state.fmt === "dec" ? "1.90" : "-110";
+    i.setAttribute("aria-label", "Sportsbook price");
+    if (state.prices[key]) { i.value = state.prices[key]; i.classList.add("has"); }
+    i.addEventListener("input", function () {
+      var v = i.value.trim();
+      if (v === "") { delete state.prices[key]; i.classList.remove("has"); }
+      else { state.prices[key] = v; i.classList.add("has"); }
+      save();
+      onChange();
+    });
+    return i;
+  }
+
+  // ---------- days ----------
+  /** Every day on the board, with that day's prediction record if it is done. */
+  function dayList() {
+    var map = {};
+    PAST.forEach(function (g) {
+      var e = map[g.d] || (map[g.d] = { d: g.d, n: 0, w: 0, l: 0, past: true });
+      e.n += 1;
+      if (g.hit) e.w += 1; else e.l += 1;
+    });
+    GAMES.forEach(function (g) {
+      var e = map[g.d] || (map[g.d] = { d: g.d, n: 0, w: 0, l: 0, past: false });
+      e.n += 1;
+    });
+    return Object.keys(map).sort().map(function (d) { return map[d]; });
+  }
+  function dayRecord(d) {
+    var w = 0, l = 0;
+    PAST.forEach(function (g) {
+      if (g.d !== d) return;
+      if (g.hit) w += 1; else l += 1;
+    });
+    return { w: w, l: l, n: w + l };
+  }
+  function firstUpcoming() {
+    return GAMES.length ? dayList().filter(function (x) { return !x.past; })[0].d : null;
+  }
+  function parseDay(d) { return new Date(d + "T12:00:00Z"); }
+  var WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function dayShort(d) {
+    var t = parseDay(d);
+    return { wd: WD[t.getUTCDay()], dd: t.getUTCDate(), mo: MO[t.getUTCMonth()] };
+  }
+  function dayLong(d) {
+    var s = dayShort(d);
+    var full = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
+                "Friday", "Saturday"][parseDay(d).getUTCDay()];
+    return full + " " + s.dd + " " + s.mo;
+  }
+
+  function renderDays() {
+    var host = document.getElementById("days");
+    host.textContent = "";
+    var list = dayList();
+    var drawnSep = false;
+    var selected = null;
+    list.forEach(function (x) {
+      // One divider between finished days and the upcoming slate.
+      if (!x.past && !drawnSep && PAST.length) {
+        host.appendChild(el("div", "daysep"));
+        drawnSep = true;
+      }
+      var s = dayShort(x.d);
+      var cls = "day";
+      if (x.past) {
+        cls += " past " + (x.w > x.l ? "hit" : (x.w < x.l ? "miss" : ""));
+      }
+      var b = el("button", cls);
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(x.d === state.day));
+      b.appendChild(el("span", "dw", s.wd));
+      b.appendChild(el("span", "dd", String(s.dd)));
+      b.appendChild(el("span", "dn", x.past ? x.w + "-" + x.l
+        : x.n + (x.n === 1 ? " game" : " games")));
+      b.title = x.past
+        ? dayLong(x.d) + ": model went " + x.w + "-" + x.l
+        : dayLong(x.d) + ": " + x.n + " scheduled";
+      b.addEventListener("click", function () {
+        state.day = x.d;
+        renderDays();
+        renderSlate();
+      });
+      if (x.d === state.day) selected = b;
+      host.appendChild(b);
+    });
+    // Bring the chosen day into view without scrolling the page itself.
+    if (selected) {
+      host.scrollLeft = Math.max(0, selected.offsetLeft - host.clientWidth / 2
+        + selected.offsetWidth / 2);
+    }
+  }
+
+  // ---------- one game ----------
+  function propsFor(g) {
+    var pool = isPast(g) ? PASTP : PROPS;
+    return pool.filter(function (p) {
+      return p.d === g.d &&
+        ((p.t === g.h && p.o === g.a) || (p.t === g.a && p.o === g.h));
+    }).sort(function (a, b) { return b.xs - a.xs; });
+  }
+  function isPast(g) { return g.hsc !== undefined && g.hsc !== null; }
+  function gkey(g) { return g.d + "|" + g.a + g.h; }
+  function lineFor(g) { return LINES[gkey(g)] || null; }
+
+  // The chip on a posted line is the bucket this game falls into, and the
+  // bucket is a measurement: what backing the model's side in that
+  // situation actually returned over 1,414 games with real prices. The chip
+  // shows that number rather than a word -- "UNPROVEN" told a viewer
+  // nothing, whereas "+2.7% +/-10" says both the estimate and that it is
+  // indistinguishable from zero.
+  function bucketChip(b) {
+    var def = BUCKETS[b] || {};
+    var roi = def.roi;
+    if (roi === undefined || roi === null) return { cls: "chip-none", txt: "—" };
+    var txt = signed(roi * 100) + "%";
+    if (def.ci) txt += " ±" + Math.round(def.ci * 100);
+    return { cls: roi >= 0 ? "chip-thin" : "chip-skip", txt: txt,
+             why: def.why || "", roi: roi, n: def.n };
+  }
+
+  // The price at which the model's own probability breaks even. Shop above
+  // this and the model thinks you have value; below it, you do not. Same
+  // idea as the MLB page's "need >=" column.
+  function breakEven(p) {
+    if (!p) return "—";
+    var dec = 1 / p;
+    return state.fmt === "dec" ? dec.toFixed(2) : decToAmerican(dec);
+  }
+
+  function lineBlock(g) {
+    var L = lineFor(g);
+    var box = el("div", "line");
+    if (!L) {
+      box.classList.add("line-none");
+      box.appendChild(el("span", "lmuted", "No price posted yet."));
+      return box;
+    }
+    var ch = bucketChip(L.b);
+    var head = el("div", "lhead");
+    head.appendChild(el("span", "lbook", L.book));
+    head.appendChild(el("span", "lml",
+      name(g.a) + " " + signedInt(L.aml) + "  ·  " +
+      name(g.h) + " " + signedInt(L.hml)));
+    var chip = el("span", "chip " + ch.cls, ch.txt);
+    chip.title = ch.why;
+    head.appendChild(chip);
+    box.appendChild(head);
+
+    var row = el("div", "lrow");
+    function cell(k, v, cls) {
+      var c = el("div", "lcell");
+      c.appendChild(el("span", "k", k));
+      c.appendChild(el("span", "v " + (cls || ""), v));
+      row.appendChild(c);
+    }
+    cell("model on " + L.side, pct1(L.pm));
+    cell("line, vig removed", pct1(L.pk));
+    cell("disagreement", signed(L.gap * 100) + "%",
+         Math.abs(L.gap) >= 0.05 ? "big" : "");
+    cell("vs the posted price", signed(L.edge * 100) + "%",
+         L.edge > 0 ? "pos" : "neg");
+    cell("need a price of", breakEven(L.pm));
+    box.appendChild(row);
+
+    var why = el("p", "lwhy");
+    why.appendChild(el("b", null, ch.txt + " measured: "));
+    why.appendChild(document.createTextNode(ch.why + "."));
+    if (L.edge > 0 && ch.roi < 0) {
+      why.appendChild(document.createTextNode(
+        " The +" + (L.edge * 100).toFixed(1) +
+        "% against this price is what that error looks like."));
+    }
+    box.appendChild(why);
+    return box;
+  }
+
+  function priceRow(label, p, key, grade) {
+    var dec = toDecimal(state.prices[key]);
+    var ev = evaluate(p, dec);
+    var tr = el("tr");
+    td(tr, label);
+    td(tr, pct1(p), "num");
+    td(tr, fairOdds(p), "num zero");
+    var c = el("td");
+    c.appendChild(oddsInput(key, renderSlate));
+    tr.appendChild(c);
+    var e = td(tr, ev ? signed(ev.edge * 100) + "%" : "—",
+               "num " + (ev ? (ev.edge > 0 ? "pos" : "neg") : "zero"));
+    var v = verdict(ev, grade);
+    td(tr, ev ? signed(ev.ev100) : "—",
+       "num hide-s " + (ev ? (ev.ev100 > 0 ? "pos" : "neg") : "zero"));
+    td(tr, ev && v.txt === "PLAY" ? money(ev.stake) : "—", "num zero");
+    var vd = el("td");
+    vd.appendChild(el("span", "chip " + v.cls, v.txt));
+    tr.appendChild(vd);
+    return tr;
+  }
+
+  function gameCard(g) {
+    var done = isPast(g);
+    var card = el("div", "game" + (done
+      ? " done " + (g.hit ? "won" : "lost") : ""));
+
+    // header: matchup, then either the pick or how the pick turned out
+    var head = el("div", "ghead");
+    var m = el("div", "matchup");
+    m.appendChild(document.createTextNode(name(g.a)));
+    m.appendChild(el("span", "at", "at"));
+    m.appendChild(document.createTextNode(name(g.h)));
+    head.appendChild(m);
+    var favHome = g.ph >= g.pa;
+    var favName = favHome ? name(g.h) : name(g.a);
+    if (done) {
+      var res = el("div", "res");
+      res.appendChild(el("span", "chip " + (g.hit ? "chip-hit" : "chip-miss"),
+        g.hit ? "CALLED IT" : "MISSED"));
+      var sub = el("span", "pick");
+      sub.appendChild(document.createTextNode("picked "));
+      sub.appendChild(el("b", null, favName));
+      sub.appendChild(document.createTextNode(" at " + pct(Math.max(g.ph, g.pa))));
+      res.appendChild(sub);
+      head.appendChild(res);
+    } else {
+      var pick = el("div", "pick");
+      pick.appendChild(document.createTextNode("Model leans "));
+      pick.appendChild(el("b", null, favName));
+      pick.appendChild(document.createTextNode(" — " + leanWord(g.ph)));
+      head.appendChild(pick);
+    }
+    card.appendChild(head);
+
+    // final score, for a game that has been played
+    if (done) {
+      var sc = el("div", "score");
+      var awayWon = g.asc > g.hsc;
+      var sa = el("span", awayWon ? "win" : "wl", g.a + " " + g.asc);
+      var sh = el("span", awayWon ? "wl" : "win", g.hsc + " " + g.h);
+      sc.appendChild(sa);
+      sc.appendChild(el("span", "wl", "–"));
+      sc.appendChild(sh);
+      if (g.wentot) sc.appendChild(el("span", "ot", "OT/SO"));
+      card.appendChild(sc);
+    }
+
+    // win probability split
+    var sp = el("div", "split");
+    var labels = el("div", "splitlabels");
+    var la = el("span", "away");
+    la.appendChild(el("span", "t", g.a + " "));
+    la.appendChild(el("span", "p", pct(g.pa)));
+    var lh = el("span", "home");
+    lh.appendChild(el("span", "p", pct(g.ph)));
+    lh.appendChild(el("span", "t", " " + g.h));
+    labels.appendChild(la);
+    labels.appendChild(lh);
+    sp.appendChild(labels);
+    var bar = el("div", "bar");
+    var ia = el("i", "ia"); ia.style.width = (g.pa * 100) + "%";
+    var ih = el("i", "ih"); ih.style.width = (g.ph * 100) + "%";
+    bar.appendChild(ia); bar.appendChild(ih);
+    sp.appendChild(bar);
+    card.appendChild(sp);
+
+    // four stats that matter
+    var stats = el("div", "stats");
+    function stat(k, v, n) {
+      var s = el("div", "stat");
+      s.appendChild(el("span", "k", k));
+      s.appendChild(el("span", "v", v));
+      if (n) s.appendChild(el("span", "n", n));
+      stats.appendChild(s);
+    }
+    if (done) {
+      function vs(predicted, actual) {
+        var w = el("span", "vs");
+        w.appendChild(document.createTextNode(predicted));
+        w.appendChild(el("span", "arrow", "→"));
+        w.appendChild(el("span", "act", actual));
+        return w;
+      }
+      var s1 = el("div", "stat");
+      s1.appendChild(el("span", "k", "Score, predicted vs final"));
+      var v1 = el("span", "v");
+      v1.appendChild(vs(g.la.toFixed(1) + "–" + g.lh.toFixed(1),
+                        g.asc + "–" + g.hsc));
+      s1.appendChild(v1);
+      s1.appendChild(el("span", "n", g.a + " – " + g.h));
+      stats.appendChild(s1);
+
+      var s2 = el("div", "stat");
+      s2.appendChild(el("span", "k", "Total goals"));
+      var v2 = el("span", "v");
+      v2.appendChild(vs(g.tot.toFixed(1), String(g.atot)));
+      s2.appendChild(v2);
+      var miss = g.atot - g.tot;
+      s2.appendChild(el("span", "n", (miss >= 0 ? "+" : "") + miss.toFixed(1)
+        + " vs predicted"));
+      stats.appendChild(s2);
+
+      stat("Said over 5.5", pct(g.o55),
+           g.atot > 5.5 ? "went over ✓" : "went under ✗");
+      stat("Said overtime", pct(g.ot),
+           g.wentot ? "went to OT ✓" : "ended in regulation");
+    } else {
+      stat("Expected score", g.la.toFixed(1) + " – " + g.lh.toFixed(1),
+           g.a + " – " + g.h);
+      stat("Total goals", g.tot.toFixed(1), "over 5.5: " + pct(g.o55));
+      stat("Overtime", pct(g.ot), "finishes level");
+      stat("Win by 2+", pct(g.pl), name(g.h));
+    }
+    card.appendChild(stats);
+
+    // goalies, with the backup guess flagged (upcoming games only)
+    var gl = el("div", "goalies");
+    if (done) gl.hidden = true;
+    [[g.a, g.ag, g.ab, g.ar], [g.h, g.hg, g.hb, g.hr]].forEach(function (x) {
+      var d = el("div", "goalie");
+      d.appendChild(el("span", "k", x[0] + " goalie · " + x[3] +
+        (x[3] === 1 ? " day rest" : " days rest")));
+      var v = el("span", "v", x[1]);
+      if (x[2]) v.appendChild(el("span", "flag", "backup assumed"));
+      d.appendChild(v);
+      gl.appendChild(d);
+    });
+    card.appendChild(gl);
+
+    // The posted line, for games not yet played. Shown whether or not the
+    // calculator is on: the disagreement is the interesting number, and it
+    // does not depend on the viewer typing anything.
+    if (!done) card.appendChild(lineBlock(g));
+
+    // prices, only in odds mode and only for games not yet played
+    if (state.odds && !done) {
+      var pr = el("div", "prices");
+      pr.appendChild(el("h4", null, "Check a price"));
+      var w = el("div", "pwrap");
+      var t = el("table", "ptable");
+      var th = el("thead");
+      var htr = el("tr");
+      ["Market", "Model", "Fair", "Book", "Edge", "EV/$100", "Stake", ""]
+        .forEach(function (h, i) {
+          var c = el("th", i === 5 ? "hide-s" : null, h);
+          htr.appendChild(c);
+        });
+      th.appendChild(htr);
+      t.appendChild(th);
+      var tb = el("tbody");
+      var id = g.d + "|" + g.a + g.h;
+      tb.appendChild(priceRow(name(g.h) + " win", g.ph, "g|" + id + "|ph", MK.moneyline.grade));
+      tb.appendChild(priceRow(name(g.a) + " win", g.pa, "g|" + id + "|pa", MK.moneyline.grade));
+      tb.appendChild(priceRow("Over 5.5 goals", g.o55, "g|" + id + "|o55", MK.over_55.grade));
+      tb.appendChild(priceRow("Over 6.5 goals", g.o65, "g|" + id + "|o65", MK.over_65.grade));
+      tb.appendChild(priceRow("Goes to overtime", g.ot, "g|" + id + "|ot", MK.ot.grade));
+      tb.appendChild(priceRow(name(g.h) + " −1.5", g.pl, "g|" + id + "|pl", MK.puckline.grade));
+      t.appendChild(tb);
+      w.appendChild(t);
+      pr.appendChild(w);
+      card.appendChild(pr);
+    }
+
+    // shots props for this game, collapsed
+    var ps = propsFor(g);
+    if (ps.length) {
+      var det = el("details", "props");
+      var sum = el("summary", null, done
+        ? "Shots on goal — predicted vs actual for " + ps.length + " skaters"
+        : "Shots on goal — " + ps.length + " skaters");
+      det.appendChild(sum);
+      var w2 = el("div", "pwrap");
+      var t2 = el("table", "ptable");
+      var th2 = el("thead");
+      var htr2 = el("tr");
+      var cols = done
+        ? ["Player", "Ice time", "Shots predicted", "Actual", "Said over 2.5", ""]
+        : ["Player", "Ice time", "Shots", "Over 1.5", "Over 2.5", "Over 3.5"];
+      if (state.odds && !done) cols = cols.concat(["Book o2.5", "Edge", ""]);
+      cols.forEach(function (h) { htr2.appendChild(el("th", null, h)); });
+      th2.appendChild(htr2);
+      t2.appendChild(th2);
+      var tb2 = el("tbody");
+      ps.forEach(function (p) {
+        var tr = el("tr");
+        var n = td(tr, "");
+        n.appendChild(el("span", "pname", p.n));
+        n.appendChild(el("span", "zero", "  " + p.t));
+        td(tr, p.toi.toFixed(1) + " min", "num");
+        td(tr, p.xs.toFixed(1), "num");
+        if (done) {
+          td(tr, String(p.asog), "num act");
+          td(tr, pct(p.p25), "num");
+          var over = p.asog > 2.5;
+          var called = (p.p25 >= 0.5) === over;
+          td(tr, over ? "over" : "under",
+             "num hitmark " + (called ? "pos" : "neg"));
+          tb2.appendChild(tr);
+          return;
+        }
+        td(tr, pct(p.p15), "num");
+        td(tr, pct(p.p25), "num");
+        td(tr, pct(p.p35), "num");
+        if (state.odds) {
+          var key = "p|" + p.d + "|" + p.n + "|p25";
+          var dec = toDecimal(state.prices[key]);
+          var ev = evaluate(p.p25, dec);
+          var c = el("td");
+          c.appendChild(oddsInput(key, renderSlate));
+          tr.appendChild(c);
+          td(tr, ev ? signed(ev.edge * 100) + "%" : "—",
+             "num " + (ev ? (ev.edge > 0 ? "pos" : "neg") : "zero"));
+          var v = verdict(ev, MK.sog_25.grade);
+          var vd = el("td");
+          vd.appendChild(el("span", "chip " + v.cls, v.txt));
+          tr.appendChild(vd);
+        }
+        tb2.appendChild(tr);
+      });
+      t2.appendChild(tb2);
+      w2.appendChild(t2);
+      det.appendChild(w2);
+      card.appendChild(det);
+    }
+    return card;
+  }
+
+  // ---------- slate ----------
+  /** How the model did on the chosen day, and across the season so far. */
+  function renderRecord(todays, anyDone) {
+    var host = document.getElementById("record");
+    host.textContent = "";
+    var rec = dayRecord(state.day);
+
+    if (anyDone && rec.n) {
+      host.appendChild(el("span", "big", rec.w + "-" + rec.l));
+      host.appendChild(document.createTextNode(
+        "on " + dayLong(state.day) + " (" + pct(rec.w / rec.n) + ")"));
+    } else {
+      host.appendChild(el("span", "big", String(todays.length)));
+      host.appendChild(document.createTextNode(
+        todays.length === 1 ? "game to come" : "games to come"));
+    }
+    host.appendChild(el("span", "sep", "·"));
+    host.appendChild(document.createTextNode("season so far "));
+    host.appendChild(el("span", "big",
+      RECORD.w + "-" + RECORD.l));
+    host.appendChild(document.createTextNode(
+      "(" + pct(RECORD.acc) + " of " + (RECORD.w + RECORD.l) + " games)"));
+    host.hidden = false;
+  }
+
+  // The value finder, in the shape of the MLB page's: a short banner of the
+  // plays with a positive edge over the posted price, then every game in
+  // one sortable table.
+  //
+  // One deliberate difference. On the MLB page a positive edge is a value
+  // pick, because that model's moneyline edge was established -- 55.0%
+  // beat-close over 674 bets. Here it was measured the other way: backing
+  // the model's side at the posted price returned -8.1% per dollar with the
+  // confidence interval below zero. So a positive edge is shown, ranked and
+  // priced exactly as there, and carries the measured return of its own
+  // situation beside it. The ranking is the model's; the verdict is the
+  // backtest's.
+  function valueRows(todays) {
+    return todays.map(function (g) {
+      var L = lineFor(g);
+      return L ? { g: g, L: L, ch: bucketChip(L.b) } : null;
+    }).filter(Boolean);
+  }
+
+  function topPlays(rows) {
+    var box = el("div", "top");
+    var value = rows.filter(function (r) { return r.L.edge > 0; })
+      .sort(function (a, b) { return b.L.edge - a.L.edge; }).slice(0, 3);
+    box.appendChild(el("h3", null, value.length
+      ? "Top value picks — biggest edge over the posted price"
+      : "Top value picks"));
+    if (!value.length) {
+      box.appendChild(el("p", "tsub",
+        "No game prices above the model's own number today — the model and "
+        + "the market agree. Nothing to shop."));
+      return box;
+    }
+    box.appendChild(el("p", "tsub", VP
+      ? "Ranked by edge over the posted price. The same filter applied to "
+        + "1,414 past games produced " + VP.n + " value picks, which won "
+        + pct1(VP.win) + " and returned " + signed(VP.roi * 100) + "% per "
+        + "dollar, interval " + signed(VP.lo * 100) + "% to "
+        + signed(VP.hi * 100) + "%. Each pick below also carries what its "
+        + "own situation returned."
+      : "Ranked by edge over the posted price."));
+    var grid = el("div", "top-grid");
+    value.forEach(function (r, i) {
+      var c = el("div", "play");
+      c.appendChild(el("div", "rank", "#" + (i + 1)));
+      c.appendChild(el("div", "pick", name(r.L.side)));
+      c.appendChild(el("div", "why",
+        "model " + pct1(r.L.pm) + " · now "
+        + signedInt(r.L.side === r.g.h ? r.L.hml : r.L.aml)
+        + " · need " + breakEven(r.L.pm)));
+      var tags = el("div", "tags");
+      tags.appendChild(el("span", "tag val",
+        signed(r.L.edge * 100) + "% edge"));
+      var m = el("span", "chip " + r.ch.cls, r.ch.txt);
+      m.title = r.ch.why;
+      tags.appendChild(m);
+      c.appendChild(tags);
+      box.appendChild(grid);
+      grid.appendChild(c);
+    });
+    return box;
+  }
+
+  var sortBy = "edge";
+
+  function rankedTable(rows) {
+    var box = el("div", "strip");
+    var h = el("div", "striphead");
+    h.appendChild(el("h3", null, "Every game on the board"));
+    h.appendChild(el("span", "lmuted", LINE_AT ? "prices " + LINE_AT : ""));
+    var seg = el("div", "seg");
+    [["edge", "Edge"], ["conf", "Model"], ["gap", "Disagreement"]]
+      .forEach(function (o) {
+        var b = el("button", null, o[1]);
+        b.type = "button";
+        b.setAttribute("aria-pressed", sortBy === o[0] ? "true" : "false");
+        b.addEventListener("click", function () {
+          sortBy = o[0];
+          renderSlate();
+        });
+        seg.appendChild(b);
+      });
+    h.appendChild(seg);
+    box.appendChild(h);
+
+    var key = { edge: function (r) { return r.L.edge; },
+                conf: function (r) { return r.L.pm; },
+                gap: function (r) { return Math.abs(r.L.gap); } }[sortBy];
+    rows = rows.slice().sort(function (a, b) { return key(b) - key(a); });
+
+    var w = el("div", "pwrap");
+    var t = el("table", "ptable");
+    var th = el("thead"), htr = el("tr");
+    ["", "Pick", "Game", "Model", "Line", "Price", "Need", "Edge",
+     "Measured return"].forEach(function (x) {
+      htr.appendChild(el("th", null, x));
+    });
+    th.appendChild(htr);
+    t.appendChild(th);
+    var tb = el("tbody");
+    rows.forEach(function (r, i) {
+      var tr = el("tr");
+      td(tr, String(i + 1), "num zero");
+      td(tr, name(r.L.side), "pname");
+      td(tr, r.g.a + " @ " + r.g.h);
+      td(tr, pct1(r.L.pm), "num");
+      td(tr, pct1(r.L.pk), "num");
+      td(tr, signedInt(r.L.side === r.g.h ? r.L.hml : r.L.aml), "num");
+      td(tr, breakEven(r.L.pm), "num zero");
+      td(tr, signed(r.L.edge * 100) + "%",
+         "num " + (r.L.edge > 0 ? "pos" : "neg"));
+      var c = el("td");
+      var chip = el("span", "chip " + r.ch.cls, r.ch.txt);
+      chip.title = r.ch.why;
+      c.appendChild(chip);
+      tr.appendChild(c);
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    w.appendChild(t);
+    box.appendChild(w);
+
+    var neg = rows.filter(function (r) { return r.ch.roi < 0; }).length;
+    var pos = rows.filter(function (r) { return r.L.edge > 0; }).length;
+    box.appendChild(el("p", "lwhy",
+      "The model shows an edge over the posted price in " + pos + " of "
+      + rows.length + " games. " + neg + " of " + rows.length
+      + " sit in situations that lost money over 1,414 games at real "
+      + "prices, which is why the edge column and the measured column "
+      + "disagree."));
+    return box;
+  }
+
+  function valueFinder(todays) {
+    var rows = valueRows(todays);
+    var frag = document.createDocumentFragment();
+    if (!rows.length) {
+      var e = el("div", "strip");
+      e.appendChild(el("p", "lmuted",
+        "No posted prices for this day yet, so there is nothing to shop."));
+      frag.appendChild(e);
+      return frag;
+    }
+    frag.appendChild(topPlays(rows));
+    frag.appendChild(rankedTable(rows));
+    return frag;
+  }
+
+  function renderSlate() {
+    var host = document.getElementById("slate");
+    host.textContent = "";
+    var todays = ALL.filter(function (g) { return g.d === state.day; });
+    var anyDone = todays.some(isPast);
+    var title = document.getElementById("dayTitle");
+    title.textContent = dayLong(state.day) + " ";
+    title.appendChild(el("span", "cnt", anyDone ? "· results" : "· predictions"));
+    document.getElementById("oddsctl").hidden = !state.odds || anyDone;
+    document.getElementById("mlNote").hidden = !state.odds || anyDone;
+    renderRecord(todays, anyDone);
+
+    if (!todays.length) {
+      host.appendChild(el("div", "empty", "No games scheduled."));
+      return;
+    }
+    if (!anyDone) host.appendChild(valueFinder(todays));
+    var frag = document.createDocumentFragment();
+    todays.forEach(function (g) { frag.appendChild(gameCard(g)); });
+    host.appendChild(frag);
+  }
+
+  // ---------- wiring ----------
+  function init() {
+    load();
+    seedPrices();
+    // Open on today's slate, with finished days reachable to the left.
+    state.day = firstUpcoming() || (dayList().length ? dayList()[0].d : null);
+    document.getElementById("asof").textContent = "generated " + DATA.generated;
+    document.getElementById("gen").textContent = DATA.generated;
+
+    var om = document.getElementById("oddsMode");
+    om.checked = state.odds;
+    om.addEventListener("change", function (e) {
+      state.odds = e.target.checked; save(); renderSlate();
+    });
+    document.getElementById("bankroll").value = state.bankroll;
+    document.getElementById("kelly").value = String(state.kelly);
+    document.getElementById("minedge").value = state.minEdge;
+    document.getElementById("fmt-am").setAttribute("aria-pressed", String(state.fmt === "am"));
+    document.getElementById("fmt-dec").setAttribute("aria-pressed", String(state.fmt === "dec"));
+    document.getElementById("fmt-am").addEventListener("click", function () {
+      state.fmt = "am";
+      document.getElementById("fmt-am").setAttribute("aria-pressed", "true");
+      document.getElementById("fmt-dec").setAttribute("aria-pressed", "false");
+      save(); renderSlate();
+    });
+    document.getElementById("fmt-dec").addEventListener("click", function () {
+      state.fmt = "dec";
+      document.getElementById("fmt-am").setAttribute("aria-pressed", "false");
+      document.getElementById("fmt-dec").setAttribute("aria-pressed", "true");
+      save(); renderSlate();
+    });
+    document.getElementById("bankroll").addEventListener("input", function (e) {
+      state.bankroll = Math.max(0, parseFloat(e.target.value) || 0); save(); renderSlate();
+    });
+    document.getElementById("kelly").addEventListener("change", function (e) {
+      state.kelly = parseFloat(e.target.value); save(); renderSlate();
+    });
+    document.getElementById("minedge").addEventListener("input", function (e) {
+      state.minEdge = Math.max(0, parseFloat(e.target.value) || 0); save(); renderSlate();
+    });
+
+    renderDays();
+    renderSlate();
+  }
+
+  init();
+})();

@@ -1,0 +1,91 @@
+<div class="wrap">
+  <div class="top">
+    <h1>NHL Daily Predictions</h1>
+    <span class="asof" id="asof">—</span>
+  </div>
+  <p class="intro">Pick a day. Finished days show what the model predicted
+    against what happened, and its record for that day. Upcoming days show who
+    it favours, by how much, and the score it expects.</p>
+
+  <div class="days" id="days" role="group" aria-label="Choose a day"></div>
+
+  <div class="daybar">
+    <h2 id="dayTitle">—</h2>
+    <label class="toggle" for="oddsMode">
+      <input type="checkbox" id="oddsMode"> Show prices &amp; edge
+    </label>
+  </div>
+
+  <div class="record" id="record" hidden></div>
+
+  <div class="oddsctl" id="oddsctl" hidden>
+    <span>Odds format</span>
+    <div class="seg" role="group" aria-label="Odds format">
+      <button type="button" id="fmt-am" aria-pressed="true">American</button>
+      <button type="button" id="fmt-dec" aria-pressed="false">Decimal</button>
+    </div>
+    <label for="bankroll">Bankroll</label>
+    <input type="number" id="bankroll" min="0" step="50" value="1000">
+    <label for="kelly">Kelly</label>
+    <select id="kelly">
+      <option value="0.125">⅛</option>
+      <option value="0.25" selected>¼</option>
+      <option value="0.5">½</option>
+      <option value="1">Full</option>
+    </select>
+    <label for="minedge">Min edge</label>
+    <input type="number" id="minedge" min="0" max="20" step="0.5" value="3">
+    <span>%</span>
+  </div>
+
+  <div class="note note-bad" id="mlNote" hidden>
+    <span class="ic">!</span>
+    <div><b>Read the edge column and the measured column together.</b>
+      Applying this page's own value filter — any price above the model's
+      number — to 1,414 holdout games with real posted prices produced 577
+      value picks. They won 53.2% and returned <b>−2.6% per dollar</b>,
+      interval −10.2% to +5.0%: not established as a loser, not established
+      as a winner, which after about 4.5% vig is what "no edge" looks like.
+      Backing every model pick returned −8.1%. One situation is established:
+      model confidence under 60% with the book agreeing on the side, where
+      758 games returned <b>−12.8%</b> with the whole interval below zero.
+      The only positive sign is a strong favourite the market also favours,
+      +2.7% over 204 bets at plus or minus 11 points. Every row carries its
+      own measured return.</div>
+  </div>
+
+  <div id="slate"></div>
+
+  <details class="limits">
+    <summary>What this model can and can't do</summary>
+    <p><b>It is honest about game winners but not sharp.</b> 54.8% accuracy on
+      1,417 games it had never seen, which beats goal-differential Elo and the
+      standings. Against real sportsbook prices on those same games it is
+      statistically level on log loss but worse calibrated, it wins under
+      half the games where it disagrees with the market on which side to
+      take, and betting its picks at those prices lost 8.1% per dollar — its
+      value picks lost 2.6%, which is the vig and nothing more.</p>
+    <p><b>The goalie matters less than it looks.</b> Swapping a guessed starter
+      for the confirmed one changes the model's predictions by almost nothing.
+      Which goalie plays turns out to predict how he plays barely at all — so
+      the flags below are honest about the guess, but the guess costs little.</p>
+    <p><b>Shots on goal is the good part.</b> It removes 13% of the error a
+      league-average guess would make, against 2.4% for game winners, and beats
+      a player's own recent average across 47,000 skater-games.</p>
+    <p><b>Goalies are a guess.</b> The backtest knew who started; this page does
+      not. On a back-to-back it assumes the backup, marked with a flag. A wrong
+      goalie moves a win probability more than anything else here.</p>
+    <p><b>Lineups are last game's.</b> A skater appears if he played his team's
+      previous game, so same-day scratches and call-ups are missed, and expected
+      ice time is his own recent average.</p>
+    <p><b>Props carry more vig.</b> Books charge roughly twice as much on a
+      shots prop as on a moneyline, so a one-percent model edge does not clear a
+      six-percent hold. Raising the minimum edge to five or seven is more honest
+      than the default three.</p>
+  </details>
+
+  <p class="foot">Built from the NHL's public play-by-play and shift charts:
+    5,697 games, 679,052 shot attempts, 213,137 ice-time records. Predictions
+    generated <span id="gen">—</span> and static from then on. Not affiliated
+    with the NHL or any sportsbook, and not advice.</p>
+</div>
