@@ -1178,3 +1178,64 @@ across all 4,038 backtested games, and only `p_home_m15` moved (mean 0.039).
 Re-frozen as **`nhl-v2-20261015`** carrying `moneyline_unchanged_since:
 nhl-v2-20261014`, so the 60 predictions already logged remain a continuous
 prospective record for the market they were logged to test.
+
+## 19. Auditing every number on the page (2026-10-16)
+
+Every quantity the page still displays, scored the same way: Brier skill
+against always quoting the base rate, and the calibration slope. Measured on
+the clean holdout.
+
+| market | n | skill | slope | bands | verdict |
+|---|---|---|---|---|---|
+| shots over 1.5 | 47,345 | **+0.1334** | +1.058 | 4/6 | keep |
+| shots over 2.5 | 47,345 | **+0.1323** | +1.051 | 5/6 | keep |
+| shots over 3.5 | 47,345 | +0.1025 | +1.026 | 5/6 | keep, **upgraded** |
+| saves over 24.5 | 2,655 | +0.0572 | +1.270 | 4/6 | keep, **downgraded** |
+| saves over 27.5 | 2,655 | +0.0563 | +1.310 | 5/6 | keep, **downgraded** |
+| saves over 30.5 | 2,655 | +0.0463 | +1.293 | 6/6 | keep |
+| home −1.5 | 1,419 | +0.0279 | +0.947 | 7/7 | keep |
+| moneyline | 1,419 | +0.0181 | +0.785 | 8/8 | keep, reference |
+| over 5.5 goals | 1,419 | +0.0005 | +0.588 | 5/5 | **removed** |
+| goes to overtime | 1,419 | −0.0019 | +0.338 | 5/6 | **removed** |
+
+### A correction on saves
+
+§17 reported that the saves model "removes 13.1% of the error a
+league-average guess makes" and the page was graded `primary` on that basis.
+That figure is the R² on the **save count**. It is not the error cut on the
+quantity anyone actually bets, which is the probability of clearing a line.
+
+Measured on that: **+4.6% to +5.7%**, under half what the shots markets
+manage, and the slopes near 1.3 say the probabilities are still too timid
+even after the §17 level correction. The market is real and worth showing —
+the baseline it beats is genuinely perverse, since a goalie's own recent
+average is worse than guessing the league mean — but it is a `usable`
+market, not a `primary` one. Grades corrected.
+
+The lesson generalises: an error cut on a count and a Brier skill on a line
+are different numbers, and quoting the flattering one is how a market gets
+over-graded. Every grade in `export_tool.py` now rests on the same measure.
+
+### Over 3.5 shots upgraded
+
+Graded `caution` since §9 on the strength of two high bands running about
+four points above prediction. That predated the temperature correction in
+§11. Re-measured it scores +0.1025 with a slope of 1.026 and 5 of 6 bands
+inside their intervals — slightly weaker than the lower lines and in the
+tail, but properly calibrated. Raised to `usable`.
+
+### What came off the page
+
+Goal totals and the overtime price, from the upcoming tiles, from the price
+calculator, and from `MARKETS` — which is what removes the price boxes,
+since the page can only offer a calculator for a market it lists.
+
+Also removed from finished games: the predicted-versus-actual total, "said
+over 5.5" and "said overtime". A tick beside a coin-flip forecast implies a
+skill the measurement denies. The final score and the actual total stay, as
+facts rather than forecasts.
+
+What survives the audit is five markets across two families: skater shots,
+goalie saves, the puck line, the moneyline as reference, and the game
+record. Every one of them has a measured skill score and a calibration slope
+behind its grade.

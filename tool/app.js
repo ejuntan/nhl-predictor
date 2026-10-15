@@ -283,10 +283,11 @@
     w.appendChild(t);
     d.appendChild(w);
     d.appendChild(el("p", "lwhy",
-      "The best market here after skater shots: it removes 13.1% of the "
-      + "error a league-average guess makes, and a goalie's own recent "
-      + "average is worse than that guess, because past save counts mostly "
-      + "reflect the opponents he happened to face."));
+      "These remove 4.6% to 5.7% of the base rate's error, under half what "
+      + "shots on goal manage. What makes the market interesting is the "
+      + "baseline it beats: a goalie's own recent average is worse than "
+      + "guessing the league mean, because past save counts mostly reflect "
+      + "the opponents he happened to face."));
     return d;
   }
 
@@ -465,20 +466,10 @@
       s1.appendChild(el("span", "n", g.a + " – " + g.h));
       stats.appendChild(s1);
 
-      var s2 = el("div", "stat");
-      s2.appendChild(el("span", "k", "Total goals"));
-      var v2 = el("span", "v");
-      v2.appendChild(vs(g.tot.toFixed(1), String(g.atot)));
-      s2.appendChild(v2);
-      var miss = g.atot - g.tot;
-      s2.appendChild(el("span", "n", (miss >= 0 ? "+" : "") + miss.toFixed(1)
-        + " vs predicted"));
-      stats.appendChild(s2);
-
-      stat("Said over 5.5", pct(g.o55),
-           g.atot > 5.5 ? "went over ✓" : "went under ✗");
-      stat("Said overtime", pct(g.ot),
-           g.wentot ? "went to OT ✓" : "ended in regulation");
+      // Only the fact, not the forecast: the expected total and the
+      // overtime price are not markets this page carries, so showing how
+      // close they came would imply a skill neither has.
+      stat("Total goals", String(g.atot), "final");
     } else {
       // The expected total and the overtime price are not shown. Both are
       // right on average and neither moves with the game: the total

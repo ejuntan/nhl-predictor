@@ -43,20 +43,33 @@ MARKETS = {
                        "and beats a player's own average at t=8.3."},
     "sog_25": {"label": "Over 2.5 shots", "grade": "primary",
                "note": "13.2% of baseline error removed, t=5.6 vs a player's own average."},
-    "saves_245": {"label": "Over 24.5 saves", "grade": "primary",
-                  "note": "Removes 13.1% of the error a league-average guess "
-                          "makes, and a goalie's own recent average is worse "
-                          "than that guess, so the usual handicap is "
-                          "actively misleading here."},
-    "saves_275": {"label": "Over 27.5 saves", "grade": "primary",
-                  "note": "Same model. Calibrated in 7 of 8 probability "
-                          "bands after the level correction."},
+    # Correction to an earlier claim: the 13.1% figure is the error cut on
+    # the save COUNT, not on the over/under. On the quantity actually bet,
+    # these remove 4.6-5.7% of the base rate's error, under half what the
+    # shots markets manage, and the slopes near 1.3 say the probabilities
+    # are still too timid. Graded usable rather than primary.
+    "saves_245": {"label": "Over 24.5 saves", "grade": "usable",
+                  "note": "Removes 5.7% of the base rate's error, under half "
+                          "what shots on goal manage. Its value is the "
+                          "baseline it beats: a goalie's own recent average "
+                          "is worse than guessing the league mean, because "
+                          "past save counts reflect the opponents he faced."},
+    "saves_275": {"label": "Over 27.5 saves", "grade": "usable",
+                  "note": "Removes 5.6% of the base rate's error. The "
+                          "calibration slope of 1.31 means the quoted "
+                          "probabilities are, if anything, too cautious."},
     "saves_305": {"label": "Over 30.5 saves", "grade": "usable",
-                  "note": "The thin end of the distribution; fewer starts "
-                          "reach it, so the estimate is noisier."},
-    "sog_35": {"label": "Over 3.5 shots", "grade": "caution",
-               "note": "Calibrated except at the top: the two highest bands came in "
-                       "about 4 points above what was predicted."},
+                  "note": "Removes 4.6%. The thin end of the distribution: "
+                          "fewer starts reach it, so the estimate is "
+                          "noisier, though every band lands inside its "
+                          "interval."},
+    # Re-measured: skill +0.1025 and a slope of 1.026 over 47,345
+    # skater-games, with 5 of 6 bands inside their intervals. The earlier
+    # "caution" grade predated the temperature correction.
+    "sog_35": {"label": "Over 3.5 shots", "grade": "usable",
+               "note": "Removes 10.3% of the base rate's error against "
+                       "13.3% at the lower lines. Slightly weaker and in "
+                       "the tail, but properly calibrated."},
 }
 
 
