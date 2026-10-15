@@ -5,6 +5,7 @@
   var PAST = DATA.past || [], PASTP = DATA.pastProps || [];
   var RECORD = DATA.record || { w: 0, l: 0, acc: 0 };
   var LINES = DATA.lines || {}, BUCKETS = DATA.buckets || {};
+  var SAVES = DATA.saves || [];
   var VP = DATA.valuePicks || null;
   var LINE_AT = DATA.lineAt || "";
   // Past days come first, then the upcoming slate.
@@ -242,6 +243,53 @@
   }
 
   // ---------- one game ----------
+  function savesFor(g) {
+    return SAVES.filter(function (s) {
+      return s.d === g.d && (s.t === g.h || s.t === g.a)
+        && (s.o === g.h || s.o === g.a);
+    }).sort(function (a, b) { return b.xs - a.xs; });
+  }
+
+  function savesBlock(g) {
+    var rows = savesFor(g);
+    if (!rows.length) return null;
+    var d = el("details", "props");
+    d.appendChild(el("summary", null,
+      "Goalie saves — " + rows.length +
+      (rows.length === 1 ? " starter" : " starters")));
+    var w = el("div", "pwrap");
+    var t = el("table", "ptable");
+    var th = el("thead"), htr = el("tr");
+    ["Goalie", "Team", "Minutes", "Saves", "o24.5", "o27.5", "o30.5"]
+      .forEach(function (x) { htr.appendChild(el("th", null, x)); });
+    th.appendChild(htr);
+    t.appendChild(th);
+    var tb = el("tbody");
+    rows.forEach(function (r) {
+      var tr = el("tr");
+      var c = el("td", "pname");
+      c.appendChild(document.createTextNode(r.g));
+      if (r.bk) c.appendChild(el("span", "flag", "backup assumed"));
+      tr.appendChild(c);
+      td(tr, r.t);
+      td(tr, r.toi.toFixed(1), "num");
+      td(tr, r.xs.toFixed(1), "num");
+      td(tr, pct(r.p245), "num");
+      td(tr, pct(r.p275), "num");
+      td(tr, pct(r.p305), "num");
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    w.appendChild(t);
+    d.appendChild(w);
+    d.appendChild(el("p", "lwhy",
+      "The best market here after skater shots: it removes 13.1% of the "
+      + "error a league-average guess makes, and a goalie's own recent "
+      + "average is worse than that guess, because past save counts mostly "
+      + "reflect the opponents he happened to face."));
+    return d;
+  }
+
   function propsFor(g) {
     var pool = isPast(g) ? PASTP : PROPS;
     return pool.filter(function (p) {
@@ -486,6 +534,12 @@
       w.appendChild(t);
       pr.appendChild(w);
       card.appendChild(pr);
+    }
+
+    // goalie saves, for games not yet played
+    if (!done) {
+      var sb = savesBlock(g);
+      if (sb) card.appendChild(sb);
     }
 
     // shots props for this game, collapsed

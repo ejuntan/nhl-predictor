@@ -37,6 +37,7 @@ stage() { printf '\n=== %s  %s ===\n' "$1" "$(date '+%H:%M:%S')"; }
   stage "predictions for the upcoming slate"
   $PY live.py | tail -3
   $PY live_props.py | tail -2
+  $PY live_saves.py | tail -2
 
   stage "live prices and the value finder"
   # Prices are the one stage allowed to come back empty: books post NHL

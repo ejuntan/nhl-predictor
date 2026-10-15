@@ -127,6 +127,51 @@ def build(con):
     return d
 
 
+def current_state(con):
+    """EWMA state after every played start, for pricing games not yet played.
+
+    `build` emits the state *before* each row, which is what a backtest
+    needs. A live prediction needs the state after the last game, so this
+    replays the same recursions and keeps the end position.
+    """
+    d = goalie_games(con)
+    alpha = 1 - 0.5 ** (1 / HL)
+    gstate = {}
+    for r in d.itertuples(index=False):
+        v = {"saves60": r.saves / (r.toi_reg / 3600),
+             "sog60": r.sog_faced / (r.toi_reg / 3600), "toi": r.toi_reg}
+        s = gstate.get(r.goalie_id)
+        gstate[r.goalie_id] = ({"n": 1, **v} if s is None else
+                               {"n": s["n"] + 1,
+                                **{k: (1 - alpha) * s[k] + alpha * v[k]
+                                   for k in v}})
+
+    tt = pd.read_sql("SELECT game_id, team, toi_reg FROM team_toi", con)
+    sh = pd.read_sql("""
+        SELECT game_id, is_home,
+               SUM(CASE WHEN event IN ('shot-on-goal','goal') THEN 1 ELSE 0 END) AS sog
+        FROM shots WHERE period_type='REG' GROUP BY game_id, is_home
+    """, con)
+    g = pd.read_sql("SELECT game_id, date, home, away FROM games", con)
+    sh = sh.merge(g, on="game_id")
+    sh["team"] = np.where(sh.is_home == 1, sh.home, sh.away)
+    sh["opp"] = np.where(sh.is_home == 1, sh.away, sh.home)
+    f = sh[["game_id", "team", "sog", "date"]].rename(columns={"sog": "sf"})
+    a = sh[["game_id", "opp", "sog"]].rename(columns={"opp": "team",
+                                                      "sog": "sa"})
+    t = tt.merge(f, on=["game_id", "team"]).merge(a, on=["game_id", "team"])
+    t = t.sort_values("date")
+    ta = 1 - 0.5 ** (1 / 20.0)
+    tstate = {}
+    for r in t.itertuples(index=False):
+        v = {"sf60": r.sf / (r.toi_reg / 3600),
+             "sa60": r.sa / (r.toi_reg / 3600)}
+        s = tstate.get(r.team)
+        tstate[r.team] = (v if s is None else
+                          {k: (1 - ta) * s[k] + ta * v[k] for k in v})
+    return gstate, tstate
+
+
 def feature_frame(d):
     x = pd.DataFrame(index=d.index)
     x["l_saves60"] = np.log(d.e_saves60.clip(lower=5))

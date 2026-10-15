@@ -59,6 +59,10 @@ re-running it each day costs only the new games.
 | `live.py` | Fits on everything completed, predicts the next 8 days. |
 | `props_model.py` | Negative-binomial shots-on-goal model, ice time as exposure. |
 | `live_props.py` | Prop prices for upcoming games. |
+| `saves_model.py`, `saves_v2.py` | Goalie saves, and the level correction that made it priceable. |
+| `live_saves.py` | Saves prices for the probable starter in each upcoming game. |
+| `totals_eval.py`, `totals_improve.py`, `totals_direct.py` | Whether game totals carry any information (they do not). |
+| `fetch_refs.py`, `refs_eval.py` | Officiating crews, and whether they move the total (they do not). |
 | `ceiling.py` | Oracle study: what each kind of information is worth. |
 | `adjust.py` | Opponent-adjusted team ratings (measured null; kept for reference). |
 | `experiment.py`, `sig.py` | Variant comparison on validation, with paired significance tests. |
@@ -131,6 +135,16 @@ forecastable by anyone.
 **Shots on goal** — five times the signal, because volume comes from ice time
 and role rather than variance. Removes 13% of baseline error and beats a
 player's own recent average at t=8.3 over 47,000 skater-games.
+
+**Goalie saves** — removes 13.1% of league-average error, and the usual
+handicap is actively misleading: a goalie's own recent average is *worse*
+than guessing the league mean, because past save counts mostly reflect the
+opponents he happened to face.
+
+**Game totals** — close to decoration. The expected total explains 0.33% of
+the variance in real totals, and the sportsbook's own posted total is no
+better than the league average either. Shown, graded `reference`, never
+bettable.
 
 ## Frozen, and running forward
 

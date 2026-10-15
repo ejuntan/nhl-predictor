@@ -41,6 +41,17 @@ MARKETS = {
                        "and beats a player's own average at t=8.3."},
     "sog_25": {"label": "Over 2.5 shots", "grade": "primary",
                "note": "13.2% of baseline error removed, t=5.6 vs a player's own average."},
+    "saves_245": {"label": "Over 24.5 saves", "grade": "primary",
+                  "note": "Removes 13.1% of the error a league-average guess "
+                          "makes, and a goalie's own recent average is worse "
+                          "than that guess, so the usual handicap is "
+                          "actively misleading here."},
+    "saves_275": {"label": "Over 27.5 saves", "grade": "primary",
+                  "note": "Same model. Calibrated in 7 of 8 probability "
+                          "bands after the level correction."},
+    "saves_305": {"label": "Over 30.5 saves", "grade": "usable",
+                  "note": "The thin end of the distribution; fewer starts "
+                          "reach it, so the estimate is noisier."},
     "sog_35": {"label": "Over 3.5 shots", "grade": "caution",
                "note": "Calibrated except at the top: the two highest bands came in "
                        "about 4 points above what was predicted."},
@@ -210,6 +221,31 @@ def main():
             "sa": round(float(r.opp_sa60), 1),
         })
 
+    # Goalie saves. itertuples mangles the dotted line names, so rename
+    # first, exactly as the skater props do.
+    try:
+        sv = pd.read_pickle("data/live_saves.pkl").rename(columns={
+            "p_over_24.5": "p245", "p_over_27.5": "p275",
+            "p_over_30.5": "p305"})
+    except FileNotFoundError:
+        sv = pd.DataFrame()
+    saves = []
+    for r in sv.itertuples(index=False):
+        saves.append({
+            "d": r.date, "t": r.team, "o": r.opp, "hm": int(r.is_home),
+            "g": r.goalie,
+            # A guessed starter is a guessed price, and more so here than
+            # anywhere else on the page: the whole quantity is one goalie's
+            # workload, so a wrong name is a wrong number rather than a
+            # small perturbation.
+            "bk": int(str(r.label).startswith("backup")),
+            "toi": round(float(r.exp_toi_min), 1),
+            "xs": round(float(r.mu), 2),
+            "p245": round(float(r.p245), 4),
+            "p275": round(float(r.p275), 4),
+            "p305": round(float(r.p305), 4),
+        })
+
     past = past_payload(nm)
     lines, line_at = line_payload()
     payload = {
@@ -217,6 +253,7 @@ def main():
         "generated": str(pd.Timestamp.now().date()),
         "games": games,
         "props": plist,
+        "saves": saves,
         "past": past["games"],
         "pastProps": past["props"],
         "record": past["record"],
@@ -236,7 +273,7 @@ def main():
     js = json.dumps(payload, separators=(",", ":"))
     open("out/tool_data.json", "w").write(js)
     print(f"upcoming games {len(games)}  props {len(plist)}  "
-          f"posted lines {len(lines)}")
+          f"saves {len(saves)}  posted lines {len(lines)}")
     print(f"past games {len(past['games'])}  past props {len(past['props'])}"
           f"  record {past['record']['w']}-{past['record']['l']}"
           f" ({past['record']['acc']:.1%})")
