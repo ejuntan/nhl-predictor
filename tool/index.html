@@ -77,7 +77,8 @@ button { cursor: pointer; }
 .day[aria-pressed=true] .dn { color: #fff; }
 .daybar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   padding: 10px 0 14px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
-.daybar h2 { font-size: 15px; font-weight: 600; margin-right: auto; }
+.daybar h2 { font-size: 17px; font-weight: 600; margin-right: auto;
+  letter-spacing: -.01em; }
 .daybar .cnt { color: var(--muted); font-weight: 400; }
 .toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px;
   color: var(--muted); background: var(--panel); border: 1px solid var(--line);
@@ -108,14 +109,13 @@ button { cursor: pointer; }
 .bar .ih { background: var(--home); }
 .readout { font-size: 12px; color: var(--faint); margin-top: 5px; }
 
-.stats { display: grid; gap: 1px; background: var(--line2);
-  border: 1px solid var(--line2); border-radius: var(--r-sm);
-  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); margin-top: 13px; }
-.stat { background: var(--panel); padding: 8px 10px; }
+.stats { display: grid; gap: 10px 18px; margin-top: 13px;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); }
+.stat { padding: 0; }
 .stat .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
   color: var(--muted); display: block; }
 .stat .v { font-family: var(--mono); font-size: 16px; font-weight: 500;
-  display: block; margin-top: 1px; }
+  display: block; margin-top: 1px; font-variant-numeric: tabular-nums; }
 .stat .n { font-size: 10.5px; color: var(--faint); display: block; }
 
 .goalies { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px;
@@ -142,6 +142,7 @@ details.props[open] summary::before { content: "▾ "; }
   color: var(--muted); font-weight: 600; }
 .ptable tbody tr:last-child td { border-bottom: 0; }
 .ptable .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.ptable tbody tr:hover td { background: var(--panel2); }
 .ptable .pname { font-weight: 500; }
 .pwrap { overflow-x: auto; }
 
@@ -190,56 +191,50 @@ details.limits p b { color: var(--fg); }
 .foot { margin-top: 22px; font-size: 11.5px; color: var(--faint); line-height: 1.6; }
 .empty { background: var(--panel); border: 1px solid var(--line);
   border-radius: var(--r); padding: 28px; text-align: center; color: var(--muted); }
-/* ---------- top value picks ---------- */
-.top { background: var(--panel); border: 1px solid var(--line);
-  border-radius: var(--r); padding: 13px 15px; margin-bottom: 14px; }
-.top h3 { font-size: 13.5px; font-weight: 600; }
-.tsub { color: var(--muted); font-size: 12px; line-height: 1.55;
-  margin: 6px 0 12px; }
-.top-grid { display: grid; gap: 10px;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
-.play { background: var(--panel2); border: 1px solid var(--line);
-  border-radius: var(--r-sm); padding: 10px 12px; }
-.play .rank { font-family: var(--mono); font-size: 10.5px; color: var(--faint);
-  letter-spacing: .05em; }
-.play .pick { font-size: 15px; font-weight: 600; margin: 1px 0 3px; }
-.play .why { font-family: var(--mono); font-size: 11.5px; color: var(--muted);
-  margin-bottom: 8px; }
-.play .tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.tag { display: inline-block; padding: 1px 6px; border-radius: 999px;
-  font-size: 10px; font-weight: 600; font-family: var(--mono); }
-.tag.val { background: var(--accent-soft); color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+/* ---------- measured-record disclosure ---------- */
+.evidence { border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--panel); margin-bottom: 14px; }
+.evidence > summary { list-style: none; cursor: pointer; padding: 10px 14px;
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.evidence > summary::-webkit-details-marker { display: none; }
+.evidence > summary::after { content: "show"; margin-left: auto;
+  font-size: 11px; color: var(--accent); font-family: var(--mono); }
+.evidence[open] > summary::after { content: "hide"; }
+.ehead { font-size: 12.5px; font-weight: 600; }
+.esum { font-size: 12.5px; color: var(--muted); }
+.evidence .pwrap { padding: 0 14px; }
+.evidence .lwhy { padding: 0 14px 12px; margin: 8px 0 0; }
+.evidence .erow td { border-top: 1px solid var(--line);
+  border-bottom: 0; font-weight: 500; }
 
-/* ---------- posted line ---------- */
-.line { margin-top: 13px; border-top: 1px solid var(--line2); padding-top: 11px; }
-.line.line-none { color: var(--faint); font-size: 12px; }
-.lhead { display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
-  margin-bottom: 9px; }
-.lbook { font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
-  color: var(--muted); font-weight: 600; }
-.lml { font-family: var(--mono); font-size: 12.5px; }
-.lhead .chip { margin-left: auto; }
-.lrow { display: grid; gap: 1px; background: var(--line2);
-  border: 1px solid var(--line2); border-radius: var(--r-sm);
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
-.lcell { background: var(--panel); padding: 7px 10px; }
-.lcell .k { font-size: 10px; text-transform: uppercase; letter-spacing: .04em;
-  color: var(--muted); display: block; }
-.lcell .v { font-family: var(--mono); font-size: 14.5px; font-weight: 500;
-  display: block; }
-.lcell .v.big { color: var(--warn); }
-.lwhy { font-size: 12px; color: var(--muted); line-height: 1.55;
-  margin: 9px 0 0; }
-.lmuted { font-size: 11.5px; color: var(--faint); }
-
-/* ---------- day-level disagreement table ---------- */
-.strip { background: var(--panel); border: 1px solid var(--line);
-  border-radius: var(--r); padding: 13px 15px; margin-bottom: 16px; }
+/* ---------- the board ---------- */
+.strip { margin-bottom: 18px; }
 .striphead { display: flex; align-items: baseline; gap: 10px;
-  flex-wrap: wrap; margin-bottom: 4px; }
-.striphead h3 { font-size: 13.5px; font-weight: 600; margin-right: auto; }
-.strip .ptable .big { color: var(--warn); font-weight: 600; }
+  flex-wrap: wrap; margin-bottom: 8px; }
+.striphead h3 { font-size: 15px; font-weight: 600; margin-right: auto; }
+.strip .ptable { background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--r); overflow: hidden; }
+.strip .ptable th { background: var(--panel2); }
+.strip .ptable th, .strip .ptable td { padding: 7px 10px; }
+.strip tr.val td { background: var(--accent-soft); }
+.badge { display: inline-block; font-family: var(--mono); font-size: 10px;
+  font-weight: 600; color: var(--accent); margin-right: 6px; }
+
+/* ---------- posted line, one row inside a game card ---------- */
+.line { margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid var(--line2); display: flex; flex-wrap: wrap;
+  align-items: baseline; gap: 4px 18px; }
+.lf { display: inline-flex; align-items: baseline; gap: 5px;
+  font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.lf .k { font-style: normal; font-family: var(--sans); font-size: 10px;
+  text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.lf b { font-weight: 500; }
+.lf.pos b { color: var(--good); }
+.lf.neg b { color: var(--bad); }
+.line .chip { margin-left: auto; }
+.lwhy { font-size: 12px; color: var(--muted); line-height: 1.55;
+  margin: 8px 0 0; }
+.lmuted { font-size: 11.5px; color: var(--faint); }
 
 /* ---------- past games ---------- */
 .day.past { background: var(--panel2); }
@@ -285,9 +280,9 @@ details.limits p b { color: var(--fg); }
     <h1>NHL Daily Predictions</h1>
     <span class="asof" id="asof">—</span>
   </div>
-  <p class="intro">Pick a day. Finished days show what the model predicted
-    against what happened, and its record for that day. Upcoming days show who
-    it favours, by how much, and the score it expects.</p>
+  <p class="intro">Pick a day. Finished days show what was predicted against
+    what happened. Upcoming days show who the model favours, the price the
+    book is posting, and what that situation has actually returned.</p>
 
   <div class="days" id="days" role="group" aria-label="Choose a day"></div>
 
@@ -318,22 +313,6 @@ details.limits p b { color: var(--fg); }
     <label for="minedge">Min edge</label>
     <input type="number" id="minedge" min="0" max="20" step="0.5" value="3">
     <span>%</span>
-  </div>
-
-  <div class="note note-bad" id="mlNote" hidden>
-    <span class="ic">!</span>
-    <div><b>Read the edge column and the measured column together.</b>
-      Applying this page's own value filter — any price above the model's
-      number — to 1,414 holdout games with real posted prices produced 577
-      value picks. They won 53.2% and returned <b>−2.6% per dollar</b>,
-      interval −10.2% to +5.0%: not established as a loser, not established
-      as a winner, which after about 4.5% vig is what "no edge" looks like.
-      Backing every model pick returned −8.1%. One situation is established:
-      model confidence under 60% with the book agreeing on the side, where
-      758 games returned <b>−12.8%</b> with the whole interval below zero.
-      The only positive sign is a strong favourite the market also favours,
-      +2.7% over 204 bets at plus or minus 11 points. Every row carries its
-      own measured return.</div>
   </div>
 
   <div id="slate"></div>
@@ -656,46 +635,26 @@ details.limits p b { color: var(--fg); }
     var L = lineFor(g);
     var box = el("div", "line");
     if (!L) {
-      box.classList.add("line-none");
       box.appendChild(el("span", "lmuted", "No price posted yet."));
       return box;
     }
     var ch = bucketChip(L.b);
-    var head = el("div", "lhead");
-    head.appendChild(el("span", "lbook", L.book));
-    head.appendChild(el("span", "lml",
-      name(g.a) + " " + signedInt(L.aml) + "  ·  " +
-      name(g.h) + " " + signedInt(L.hml)));
+    // One row of figures, not a second bordered grid: the card already has
+    // one above it, and two identical grids flattened the card.
+    [["book", L.book],
+     ["price", signedInt(L.side === g.h ? L.hml : L.aml)],
+     ["model", pct1(L.pm)],
+     ["line", pct1(L.pk)],
+     ["need", breakEven(L.pm)],
+     ["edge", signed(L.edge * 100) + "%"]].forEach(function (x, i) {
+      var c = el("span", "lf" + (i === 5 ? (L.edge > 0 ? " pos" : " neg") : ""));
+      c.appendChild(el("i", "k", x[0]));
+      c.appendChild(el("b", null, String(x[1])));
+      box.appendChild(c);
+    });
     var chip = el("span", "chip " + ch.cls, ch.txt);
     chip.title = ch.why;
-    head.appendChild(chip);
-    box.appendChild(head);
-
-    var row = el("div", "lrow");
-    function cell(k, v, cls) {
-      var c = el("div", "lcell");
-      c.appendChild(el("span", "k", k));
-      c.appendChild(el("span", "v " + (cls || ""), v));
-      row.appendChild(c);
-    }
-    cell("model on " + L.side, pct1(L.pm));
-    cell("line, vig removed", pct1(L.pk));
-    cell("disagreement", signed(L.gap * 100) + "%",
-         Math.abs(L.gap) >= 0.05 ? "big" : "");
-    cell("vs the posted price", signed(L.edge * 100) + "%",
-         L.edge > 0 ? "pos" : "neg");
-    cell("need a price of", breakEven(L.pm));
-    box.appendChild(row);
-
-    var why = el("p", "lwhy");
-    why.appendChild(el("b", null, ch.txt + " measured: "));
-    why.appendChild(document.createTextNode(ch.why + "."));
-    if (L.edge > 0 && ch.roi < 0) {
-      why.appendChild(document.createTextNode(
-        " The +" + (L.edge * 100).toFixed(1) +
-        "% against this price is what that error looks like."));
-    }
-    box.appendChild(why);
+    box.appendChild(chip);
     return box;
   }
 
@@ -949,6 +908,70 @@ details.limits p b { color: var(--fg); }
 
   // ---------- slate ----------
   /** How the model did on the chosen day, and across the season so far. */
+
+  // The measured record, as a table rather than a paragraph of confidence
+  // intervals. It was four sentences repeated in four places; it is now one
+  // disclosure the reader opens when they want the numbers.
+  function evidencePanel() {
+    var d = el("details", "evidence");
+    var sum = el("summary");
+    sum.appendChild(el("span", "ehead", "Measured at real prices"));
+    sum.appendChild(el("span", "esum", VP
+      ? "this model's value picks returned " + signed(VP.roi * 100)
+        + "% per dollar over " + VP.n + " past bets"
+      : "no edge established"));
+    d.appendChild(sum);
+
+    var w = el("div", "pwrap");
+    var t = el("table", "ptable");
+    var th = el("thead"), htr = el("tr");
+    ["Situation", "Games", "Won", "Return", "Interval"]
+      .forEach(function (x) { htr.appendChild(el("th", null, x)); });
+    th.appendChild(htr);
+    t.appendChild(th);
+    var tb = el("tbody");
+    var label = { thin: "Model under 60%, book agrees",
+                  dog: "Model backs the book's underdog",
+                  fav: "Strong favourite, book agrees" };
+    ["thin", "dog", "fav"].forEach(function (k) {
+      var b = BUCKETS[k];
+      if (!b) return;
+      var tr = el("tr");
+      td(tr, label[k]);
+      td(tr, String(b.n), "num");
+      td(tr, pct1(b.win), "num");
+      td(tr, signed(b.roi * 100) + "%",
+         "num " + (b.roi + b.ci < 0 ? "neg" : "zero"));
+      td(tr, "±" + (b.ci * 100).toFixed(1), "num zero");
+      tb.appendChild(tr);
+    });
+    if (VP) {
+      var tr = el("tr", "erow");
+      td(tr, "Any price above the model's number");
+      td(tr, String(VP.n), "num");
+      td(tr, pct1(VP.win), "num");
+      td(tr, signed(VP.roi * 100) + "%", "num zero");
+      td(tr, signed(VP.lo * 100) + " to " + signed(VP.hi * 100), "num zero");
+      tb.appendChild(tr);
+    }
+    t.appendChild(tb);
+    w.appendChild(t);
+    d.appendChild(w);
+    d.appendChild(el("p", "lwhy",
+      "One line is established: when the model is under 60% and the book "
+      + "agrees on the side, the whole interval sits below zero. That is "
+      + "54% of a typical board. Everything else straddles zero, so an edge "
+      + "shown below is a number, not a verdict."));
+    return d;
+  }
+
+  function valueRows(todays) {
+    return todays.map(function (g) {
+      var L = lineFor(g);
+      return L ? { g: g, L: L, ch: bucketChip(L.b) } : null;
+    }).filter(Boolean);
+  }
+
   function renderRecord(todays, anyDone) {
     var host = document.getElementById("record");
     host.textContent = "";
@@ -972,74 +995,12 @@ details.limits p b { color: var(--fg); }
     host.hidden = false;
   }
 
-  // The value finder, in the shape of the MLB page's: a short banner of the
-  // plays with a positive edge over the posted price, then every game in
-  // one sortable table.
-  //
-  // One deliberate difference. On the MLB page a positive edge is a value
-  // pick, because that model's moneyline edge was established -- 55.0%
-  // beat-close over 674 bets. Here it was measured the other way: backing
-  // the model's side at the posted price returned -8.1% per dollar with the
-  // confidence interval below zero. So a positive edge is shown, ranked and
-  // priced exactly as there, and carries the measured return of its own
-  // situation beside it. The ranking is the model's; the verdict is the
-  // backtest's.
-  function valueRows(todays) {
-    return todays.map(function (g) {
-      var L = lineFor(g);
-      return L ? { g: g, L: L, ch: bucketChip(L.b) } : null;
-    }).filter(Boolean);
-  }
-
-  function topPlays(rows) {
-    var box = el("div", "top");
-    var value = rows.filter(function (r) { return r.L.edge > 0; })
-      .sort(function (a, b) { return b.L.edge - a.L.edge; }).slice(0, 3);
-    box.appendChild(el("h3", null, value.length
-      ? "Top value picks — biggest edge over the posted price"
-      : "Top value picks"));
-    if (!value.length) {
-      box.appendChild(el("p", "tsub",
-        "No game prices above the model's own number today — the model and "
-        + "the market agree. Nothing to shop."));
-      return box;
-    }
-    box.appendChild(el("p", "tsub", VP
-      ? "Ranked by edge over the posted price. The same filter applied to "
-        + "1,414 past games produced " + VP.n + " value picks, which won "
-        + pct1(VP.win) + " and returned " + signed(VP.roi * 100) + "% per "
-        + "dollar, interval " + signed(VP.lo * 100) + "% to "
-        + signed(VP.hi * 100) + "%. Each pick below also carries what its "
-        + "own situation returned."
-      : "Ranked by edge over the posted price."));
-    var grid = el("div", "top-grid");
-    value.forEach(function (r, i) {
-      var c = el("div", "play");
-      c.appendChild(el("div", "rank", "#" + (i + 1)));
-      c.appendChild(el("div", "pick", name(r.L.side)));
-      c.appendChild(el("div", "why",
-        "model " + pct1(r.L.pm) + " · now "
-        + signedInt(r.L.side === r.g.h ? r.L.hml : r.L.aml)
-        + " · need " + breakEven(r.L.pm)));
-      var tags = el("div", "tags");
-      tags.appendChild(el("span", "tag val",
-        signed(r.L.edge * 100) + "% edge"));
-      var m = el("span", "chip " + r.ch.cls, r.ch.txt);
-      m.title = r.ch.why;
-      tags.appendChild(m);
-      c.appendChild(tags);
-      box.appendChild(grid);
-      grid.appendChild(c);
-    });
-    return box;
-  }
-
   var sortBy = "edge";
 
   function rankedTable(rows) {
     var box = el("div", "strip");
     var h = el("div", "striphead");
-    h.appendChild(el("h3", null, "Every game on the board"));
+    h.appendChild(el("h3", null, "The board"));
     h.appendChild(el("span", "lmuted", LINE_AT ? "prices " + LINE_AT : ""));
     var seg = el("div", "seg");
     [["edge", "Edge"], ["conf", "Model"], ["gap", "Disagreement"]]
@@ -1064,17 +1025,24 @@ details.limits p b { color: var(--fg); }
     var w = el("div", "pwrap");
     var t = el("table", "ptable");
     var th = el("thead"), htr = el("tr");
-    ["", "Pick", "Game", "Model", "Line", "Price", "Need", "Edge",
-     "Measured return"].forEach(function (x) {
+    ["Pick", "Game", "Model", "Line", "Price", "Need", "Edge",
+     "Measured"].forEach(function (x) {
       htr.appendChild(el("th", null, x));
     });
     th.appendChild(htr);
     t.appendChild(th);
     var tb = el("tbody");
-    rows.forEach(function (r, i) {
-      var tr = el("tr");
-      td(tr, String(i + 1), "num zero");
-      td(tr, name(r.L.side), "pname");
+    // Rank badges go on the value picks only, in edge order, so the three
+    // the page would have listed separately are findable in one table.
+    var ranked = rows.slice().filter(function (r) { return r.L.edge > 0; })
+      .sort(function (a, b) { return b.L.edge - a.L.edge; });
+    rows.forEach(function (r) {
+      var rank = ranked.indexOf(r) + 1;
+      var tr = el("tr", r.L.edge > 0 ? "val" : null);
+      var p = el("td", "pname");
+      if (rank > 0 && rank <= 3) p.appendChild(el("span", "badge", "#" + rank));
+      p.appendChild(document.createTextNode(name(r.L.side)));
+      tr.appendChild(p);
       td(tr, r.g.a + " @ " + r.g.h);
       td(tr, pct1(r.L.pm), "num");
       td(tr, pct1(r.L.pk), "num");
@@ -1093,14 +1061,13 @@ details.limits p b { color: var(--fg); }
     w.appendChild(t);
     box.appendChild(w);
 
-    var neg = rows.filter(function (r) { return r.ch.roi < 0; }).length;
-    var pos = rows.filter(function (r) { return r.L.edge > 0; }).length;
+    var est = rows.filter(function (r) {
+      return (r.ch.roi + (BUCKETS[r.L.b] || {}).ci) < 0;
+    }).length;
+    var pos = ranked.length;
     box.appendChild(el("p", "lwhy",
-      "The model shows an edge over the posted price in " + pos + " of "
-      + rows.length + " games. " + neg + " of " + rows.length
-      + " sit in situations that lost money over 1,414 games at real "
-      + "prices, which is why the edge column and the measured column "
-      + "disagree."));
+      pos + " of " + rows.length + " games price above the model's number. "
+      + est + " are in the one situation measured to lose."));
     return box;
   }
 
@@ -1114,7 +1081,7 @@ details.limits p b { color: var(--fg); }
       frag.appendChild(e);
       return frag;
     }
-    frag.appendChild(topPlays(rows));
+    frag.appendChild(evidencePanel());
     frag.appendChild(rankedTable(rows));
     return frag;
   }
@@ -1128,7 +1095,6 @@ details.limits p b { color: var(--fg); }
     title.textContent = dayLong(state.day) + " ";
     title.appendChild(el("span", "cnt", anyDone ? "· results" : "· predictions"));
     document.getElementById("oddsctl").hidden = !state.odds || anyDone;
-    document.getElementById("mlNote").hidden = !state.odds || anyDone;
     renderRecord(todays, anyDone);
 
     if (!todays.length) {

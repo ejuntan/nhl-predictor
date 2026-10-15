@@ -3,9 +3,9 @@
     <h1>NHL Daily Predictions</h1>
     <span class="asof" id="asof">—</span>
   </div>
-  <p class="intro">Pick a day. Finished days show what the model predicted
-    against what happened, and its record for that day. Upcoming days show who
-    it favours, by how much, and the score it expects.</p>
+  <p class="intro">Pick a day. Finished days show what was predicted against
+    what happened. Upcoming days show who the model favours, the price the
+    book is posting, and what that situation has actually returned.</p>
 
   <div class="days" id="days" role="group" aria-label="Choose a day"></div>
 
@@ -36,22 +36,6 @@
     <label for="minedge">Min edge</label>
     <input type="number" id="minedge" min="0" max="20" step="0.5" value="3">
     <span>%</span>
-  </div>
-
-  <div class="note note-bad" id="mlNote" hidden>
-    <span class="ic">!</span>
-    <div><b>Read the edge column and the measured column together.</b>
-      Applying this page's own value filter — any price above the model's
-      number — to 1,414 holdout games with real posted prices produced 577
-      value picks. They won 53.2% and returned <b>−2.6% per dollar</b>,
-      interval −10.2% to +5.0%: not established as a loser, not established
-      as a winner, which after about 4.5% vig is what "no edge" looks like.
-      Backing every model pick returned −8.1%. One situation is established:
-      model confidence under 60% with the book agreeing on the side, where
-      758 games returned <b>−12.8%</b> with the whole interval below zero.
-      The only positive sign is a strong favourite the market also favours,
-      +2.7% over 204 bets at plus or minus 11 points. Every row carries its
-      own measured return.</div>
   </div>
 
   <div id="slate"></div>
