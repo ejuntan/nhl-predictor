@@ -854,7 +854,7 @@ a coin-flip line is not the market naming an underdog.
 | model backs the market's dog | 212 | .476 | +0.4% | ±14.2 | 202, +1.5% |
 | conf < 60%, market agrees | 758 | .509 | **−12.8%** | ±6.1 | 171, −13.7% |
 | conf ≥ 60%, market agrees | 444 | .642 | −1.8% | ±6.8 | 204, +2.7% |
-| every model pick | 1,414 | .563 | −8.1% | ±4.6 | — |
+| every model pick | 1,414 | .563 | −7.3% | ±4.5 | — |
 | **this page's value filter** | 577 | .532 | **−2.6%** | −10.2 to +5.0 | — |
 
 **A correction.** Earlier in this work I reported the underdog bucket as
@@ -1239,3 +1239,56 @@ What survives the audit is five markets across two families: skater shots,
 goalie saves, the puck line, the moneyline as reference, and the game
 record. Every one of them has a measured skill score and a calibration slope
 behind its grade.
+
+## 20. One unit on every prediction (2026-10-16)
+
+`flat_bet.py`. Real posted prices exist only for the moneyline, so this
+splits into what was measured and what is conditional on a price never
+observed.
+
+### The moneyline, at the price the book actually posted
+
+| | bets | result | ROI | 95% CI |
+|---|---|---|---|---|
+| **every game** | 1,414 | **−103.8u** | **−7.34%** | [−11.83%, −2.85%] |
+| only where the model shows an edge | 577 | −14.7u | −2.55% | [−10.16%, +5.05%] |
+| model under 60%, book agrees | 741 | −87.5u | −11.81% | [−18.00%, −5.61%] |
+| strong favourite, book agrees | 444 | −7.9u | −1.79% | [−8.70%, +5.13%] |
+| backing the book's underdog | 212 | +0.9u | +0.43% | [−13.86%, +14.72%] |
+
+The book's median hold on these games is 4.26%, so a bettor with no edge
+loses roughly that. Betting every pick loses nearly twice it, because the
+largest bucket is also the worst one.
+
+**A correction.** §14 recorded −8.1% for "every model pick". That figure is
+the 1,185 games where the model and the book agree on the side, not all
+1,414. Flat-betting every pick is **−7.34%**. The page carried the wrong
+number and has been fixed.
+
+### The props, where no price was ever observed
+
+The useful question is not what would have been won but how much vig the
+edge can carry. Both bounds are computable: a book pricing every line at the
+league base rate is the softest it could plausibly be, and one pricing at
+the realised rate in the model's own probability band is the hardest.
+
+| market | hold | vs a lazy book | vs a sharp book |
+|---|---|---|---|
+| shots over 1.5 | 0% | +31.6% | **+0.4%** |
+| | 6% | +24.1% | −5.3% |
+| shots over 2.5 | 0% | +36.5% | **+0.2%** |
+| | 6% | +28.7% | −5.5% |
+| saves over 27.5 | 0% | +18.9% | **−0.9%** |
+| | 6% | +12.1% | −6.5% |
+
+The second column is the whole project in one number. **Against a book that
+prices these lines correctly, the model's edge is 0.4%, 0.2% and −0.9% —
+nothing, before any vig at all.** Its enormous margin in the first column is
+an edge over a naive baseline, not over a bookmaker.
+
+This is the same conclusion the moneyline reached, arriving from the other
+direction. The model removes 13% of the error a league-average guess makes
+on shots on goal, which is a real and substantial piece of modelling, and it
+buys nothing against a counterparty who has also done the modelling. Prop
+markets are softer than moneylines, so the true answer sits somewhere
+between the columns — but the right column is the one to plan against.
