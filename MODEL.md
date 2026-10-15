@@ -885,3 +885,76 @@ estimate and its uncertainty are both visible, and a reader can see that no
 bucket's interval clears zero. `tool/linetest.py` asserts that: no chip may
 ever read as an established winner, and exactly one reads as an established
 loser.
+
+## 15. Are the total estimates accurate? (measured 2026-10-16)
+
+`totals_eval.py`. The page prints an expected total on every card and the
+backtest reported calibration at three fixed lines, which is the wrong
+question: a forecast that always says "6.2 goals" can be perfectly
+calibrated and carry no information whatever.
+
+Three harder questions, on the clean holdout.
+
+### 1. Does it beat guessing the league average?
+
+| | MAE | RMSE | R² vs the mean |
+|---|---|---|---|
+| model | 1.837 | 2.300 | **−0.0008** |
+| always the league average | 1.849 | 2.299 | 0 |
+
+Marginally better on absolute error (t=−1.78, p=0.076), marginally worse on
+squared error. No skill either way.
+
+The reason is visible in one line: **the model's estimates have a standard
+deviation of 0.272 against the actual 2.299**, and span 5.56 to 7.62 while
+real games run from 1 to 16. Correlation with the realised total is 0.057,
+so the expected total explains **0.33% of the variance**.
+
+### 2. Does it beat the number the sportsbook posted?
+
+| | MAE | RMSE | R² vs the mean |
+|---|---|---|---|
+| model | 1.839 | 2.303 | −0.0008 |
+| posted total | 1.842 | 2.316 | −0.0123 |
+
+Dead level (t=−0.20, p=0.84), and the two estimates correlate only 0.353.
+
+The striking part is the second row. **The sportsbook's own total is also no
+better than the league average** at predicting a game's total, and by R² it
+is slightly worse. This is not a fault in the model. Nobody can forecast how
+many goals a hockey game will contain, because the quantity is nearly all
+variance. The MLB model in this account reached the same conclusion from the
+other side: its total MAE was 3.607 against the market's 3.527.
+
+### 3. When it disagrees with the line, is it right?
+
+**51.24% on 1,411 non-push games**, 95% CI [48.6%, 53.8%]. A −110 price
+needs 52.4%. Split by how far apart the two numbers are, no bucket separates
+from chance; the largest disagreements (over half a goal, calling the over)
+go 52.5% on 398 games. `edge_test.py` priced it directly and found −4.6% per
+dollar at any edge, −7.3% at a 4% threshold with the interval below zero.
+
+### The calibration slope
+
+Regressing the outcome on the model's own log-odds at the book's line:
+
+| market | slope |
+|---|---|
+| game totals | **+0.283** |
+| moneyline, for comparison | +0.785 |
+
+A slope of 1 means the probabilities carry their stated information; 0 means
+none. At 0.28, a 56% from this model is really about 52%. Calibration *on
+average* is fine — 53.7% predicted against 51.9% actual at a 5.5 line, 46.8%
+against 50.2% at 6.5 — because the average is near the base rate and the
+model never strays far from it. The spread is what fails.
+
+### What changed on the page
+
+Nothing in the model. Refitting a slope on these same 1,414 games is exactly
+the selection pressure §13 froze the model to stop. What changed is what the
+page claims: **Over 5.5 and Over 6.5 move from `usable` to `reference`**,
+which forces SKIP in the UI regardless of how large an apparent edge is, and
+the limitations panel now states the 0.33% and the 51.2% outright. Over 4.5
+stays `biased` — at 77.1% predicted against 80.9% actual it is the one
+totals number that is also wrong on average.

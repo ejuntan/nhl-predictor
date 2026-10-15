@@ -15,12 +15,23 @@ MARKETS = {
                           "0.679 -- statistically level. But backing the "
                           "model's side at those prices returned -8.1% per "
                           "dollar. Shown for context, not to bet into."},
-    "over_55": {"label": "Over 5.5 goals", "grade": "usable",
-                "note": "Predicted 55.1% vs 57.1% actual, inside the margin of error."},
-    "over_65": {"label": "Over 6.5 goals", "grade": "usable",
-                "note": "Predicted 45.1% vs 46.7% actual, inside the margin of error."},
+    # Totals are calibrated on average and carry almost no information.
+    # The expected total explains 0.33% of the variance in real totals, and
+    # the calibration slope at a book's posted line is 0.28 against the
+    # moneyline's 0.78 -- a 56% from this model is really about 52%. Graded
+    # reference so a large apparent edge can never read as a play.
+    "over_55": {"label": "Over 5.5 goals", "grade": "reference",
+                "note": "Calibrated on average (55.6% vs 57.1%) but close to "
+                        "uninformative: calibration slope 0.28, and the "
+                        "model is right on only 51.2% of the games where it "
+                        "disagrees with the posted total."},
+    "over_65": {"label": "Over 6.5 goals", "grade": "reference",
+                "note": "Calibrated on average (45.5% vs 46.7%) but close to "
+                        "uninformative: the expected total explains 0.33% of "
+                        "the variance in real totals."},
     "over_45": {"label": "Over 4.5 goals", "grade": "biased",
-                "note": "Predicted 76.9% vs 80.8% actual. Runs low; do not bet unders off this."},
+                "note": "Predicted 77.1% vs 80.9% actual, outside the margin "
+                        "of error. Runs low; do not bet unders off this."},
     "puckline": {"label": "Home -1.5", "grade": "biased",
                  "note": "Predicted 27.4% vs 30.3% actual. Runs low on home blowouts."},
     "ot": {"label": "Game goes to OT", "grade": "usable",
