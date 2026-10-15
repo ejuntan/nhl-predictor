@@ -958,3 +958,79 @@ which forces SKIP in the UI regardless of how large an apparent edge is, and
 the limitations panel now states the 0.33% and the 51.2% outright. Over 4.5
 stays `biased` — at 77.1% predicted against 80.9% actual it is the one
 totals number that is also wrong on average.
+
+## 16. Can the totals be improved? (measured 2026-10-16)
+
+§15 showed the total estimates carry almost no information. This asks
+whether that is fixable. Four tests, ceiling first.
+
+### The ceiling (`totals_improve.py`)
+
+An oracle that knows each team's realised full-season scoring and conceding
+rates — it uses the future, so no causal model can beat it:
+
+| | MAE | R² vs the league average | sd of estimate |
+|---|---|---|---|
+| oracle, using the future | 1.8121 | **+0.0465** | 0.499 |
+| the model | 1.8596 | −0.0060 | 0.330 |
+| always the league average | 1.8654 | 0 | 0 |
+
+**Perfect season-long knowledge of both teams is worth 0.053 goals of mean
+absolute error.** Even the oracle's estimates only span half a goal against
+the 2.3-goal spread of real totals. That is the entire budget.
+
+A note against my own first test: the Poisson decomposition says the
+variance left for between-game differences is **−0.968**, totals being
+*under*-dispersed relative to a constant-rate count. That is real — the
+overtime rule adds exactly one goal to a tied game, never two or none, which
+truncates the distribution — but it means the process is not Poisson, so the
+arithmetic cannot be read as "zero signal". The oracle is the honest bound.
+
+### Three ways at it, all null
+
+**Shrink the estimates.** The slope of actual on predicted is 0.311 on the
+validation seasons (0.484 on the holdout), well under 1, so the model
+overstates its own differences. Shrinking by the fitted slope — fitted on
+validation, applied to the holdout — improves R² (+0.0011 to +0.0040) and
+worsens MAE (1.8367 to 1.8400). Paired t=+0.67, p=0.504.
+
+**Bypass the score grid** (`totals_direct.py`). The grid exists to keep the
+moneyline, puck line and totals mutually consistent, and that constraint
+could be costing the total its spread. A ridge trained directly on the total
+— the most favourable setup available, optimising exactly the target —
+scores MAE 1.8371 against the grid's 1.8367. **t=+0.08, p=0.934.** The grid
+is not the bottleneck; the information is not in the features. A naive
+rolling goals-for/against estimate is significantly *worse* (t=+2.81,
+p=0.005).
+
+**Referees** (`fetch_refs.py`, `refs_eval.py`). The one pre-game signal
+never tested, and a plausible one: crews differ in penalties called,
+penalties make power plays, power plays are about a fifth of scoring. The
+names turned out to be in the right-rail endpoint already crawled for
+scratches, so this cost one re-read: 21,417 official assignments, 51
+referees, 100% coverage.
+
+| | |
+|---|---|
+| spread of referees' average totals (39 with 100+ games) | 0.1396 |
+| spread chance alone produces | 0.1477 |
+| **excess attributable to the referee** | **0.0000** |
+| one-way ANOVA across crews | F=0.916, p=0.617 |
+
+Referees differ *less* than sampling noise would produce. The apparent range
+— Trevor Hanson 5.93, Carter Sandlak 6.46 — is entirely the noise of 200 to
+300 games each. Adding the crew's causal history to the model: MAE 1.8360 to
+1.8362, t=+0.54, p=0.587; the crew's own history correlates +0.011 with the
+total.
+
+### The answer
+
+No. The ceiling is 4.6% of variance on a generous oracle, the model reaches
+none of it, and the three routes to it — better calibration, a better
+functional form, a new signal — measure as nothing. The market's own total
+is also worse than the league average by R², which is the clearest evidence
+that this is a property of hockey rather than a deficiency here.
+
+The referee table is kept. It is the right input for a penalty or
+power-play market, which this project does not price, and it cost one crawl
+of an endpoint already in use.
