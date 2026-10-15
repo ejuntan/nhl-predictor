@@ -1034,3 +1034,85 @@ that this is a property of hockey rather than a deficiency here.
 The referee table is kept. It is the right input for a penalty or
 power-play market, which this project does not price, and it cost one crawl
 of an endpoint already in use.
+
+## 17. The one improvement that worked: saves props (2026-10-16)
+
+§10 shelved the goalie-saves model as "not yet usable" on a calibration
+failure, and blamed the dispersion. Re-diagnosed, the blame was wrong and
+the fix is one the win model already uses.
+
+### Re-diagnosis
+
+The shipped version's calibration across all three lines:
+
+| | |
+|---|---|
+| calibration slope | **+1.122** |
+| intercept | **+0.170** |
+| bands inside their 95% interval | 5 of 8 |
+
+A slope *above* 1 means the probabilities are too timid, not too confident,
+and the positive intercept means the over is systematically under-priced.
+Both point at the level of `mu`, not the shape of the distribution around
+it. §10's note that "the Poisson GLM plus a single global dispersion
+compresses the spread" was the wrong reading of its own numbers.
+
+### Dispersion was not the fault
+
+Three dispersion treatments, each walk-forward, none fitted on the holdout:
+
+| | slope | bands inside | Brier |
+|---|---|---|---|
+| fitted in-sample (shipped) | +1.108 | 5/8 | 0.18544 |
+| fitted on last season's out-of-sample residuals | +1.108 | 5/8 | 0.18544 |
+| allowed to depend on the mean, r = a·μ^b | +1.118 | 5/8 | 0.18546 |
+
+Identical to three decimal places. The negative binomial was already fitting
+the spread correctly; the centre was in the wrong place.
+
+### What worked
+
+A causal level correction, the same device the win model uses for league
+scoring drift: compare actual to predicted saves over the trailing 400
+starts and scale `mu` by the ratio, clipped to ±5%, using only starts
+already played. The mean multiplier on the holdout came out **1.0080** —
+the league was producing 0.8% more saves than a model fitted on older
+seasons expected.
+
+| | slope | intercept | bands inside | Brier |
+|---|---|---|---|---|
+| shipped | +1.108 | +0.165 | 5/8 | 0.18544 |
+| Platt, fitted on validation | +1.003 | +0.092 | 6/8 | 0.18529 |
+| **causal level correction** | +1.096 | +0.095 | **7/8** | 0.18538 |
+
+The two bands that failed before now sit inside their intervals: 0.40-0.50
+went from a +0.049 gap to +0.026, and 0.60-0.70 from +0.095 to +0.065. The
+only band still outside holds 11 prices.
+
+Platt scores a nominally perfect slope but leaves two middle bands outside,
+and it is a correction fitted on past seasons rather than one that tracks
+the league as it moves. The causal version is preferred for the same reason
+the win model's tie retune was: it was validated in both directions and it
+keeps working when the league changes.
+
+### What it is worth
+
+| | MAE | R² vs the league mean |
+|---|---|---|
+| model | 5.024 | **+0.131** |
+| model, level corrected | 5.034 | +0.130 |
+| the goalie's own recent average | 5.317 | +0.036 |
+| league mean | 5.476 | 0 |
+
+Discrimination is unchanged — this is a calibration fix, not new
+information, exactly like the temperature correction on skater shots. What
+changed is that the prices can now be shown. The model removes **13.1%** of
+the error a league-average guess makes, against 0.33% for game totals and
+2.4% for game winners, and it beats the hand baseline by a wide margin for
+the reason §10 found: a goalie's past save count reflects the opponents he
+happened to face, so the intuitive handicap is actively misleading.
+
+Saves is now the second-best market in this project, behind skater shots and
+far ahead of anything game-level. It is not yet on the page: that needs a
+live path for the probable starter's expected shots faced, which does not
+exist yet.
