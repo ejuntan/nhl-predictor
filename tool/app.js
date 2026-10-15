@@ -22,10 +22,12 @@
   };
   var name = function (abbr) { return TEAM[abbr] || abbr; };
 
-  var state = {
-    day: null, odds: false, fmt: "am", bankroll: 1000, kelly: 0.25,
-    minEdge: 3, prices: {}
-  };
+  // Below this, an edge is inside the vig and not worth calling an edge.
+  // It used to be a control; it is a constant because every measurement
+  // behind this page says the threshold is not where the money is.
+  var MIN_EDGE = 3;
+
+  var state = { day: null, odds: false, fmt: "am", prices: {} };
 
   // ---------- storage (per viewer; can be unavailable) ----------
   function load() {
@@ -33,7 +35,7 @@
       var raw = localStorage.getItem("nhl-daily-v1");
       if (!raw) return;
       var s = JSON.parse(raw);
-      ["odds", "fmt", "bankroll", "kelly", "minEdge"].forEach(function (k) {
+      ["odds", "fmt"].forEach(function (k) {
         if (s[k] !== undefined && s[k] !== null) state[k] = s[k];
       });
       if (s.prices && typeof s.prices === "object") state.prices = s.prices;
@@ -45,8 +47,7 @@
     st = setTimeout(function () {
       try {
         localStorage.setItem("nhl-daily-v1", JSON.stringify({
-          odds: state.odds, fmt: state.fmt, bankroll: state.bankroll,
-          kelly: state.kelly, minEdge: state.minEdge, prices: state.prices
+          odds: state.odds, fmt: state.fmt, prices: state.prices
         }));
       } catch (e) { /* ignore */ }
     }, 250);
@@ -81,31 +82,32 @@
   }
   function evaluate(p, dec) {
     if (!dec || !(p > 0 && p < 1)) return null;
-    var evPer1 = p * (dec - 1) - (1 - p);
-    var kf = (dec - 1) > 0 ? (p * dec - 1) / (dec - 1) : 0;
-    return {
-      edge: p - 1 / dec, ev100: evPer1 * 100,
-      stake: Math.max(0, kf) * state.kelly * state.bankroll
-    };
+    return { edge: p - 1 / dec, ev100: (p * (dec - 1) - (1 - p)) * 100 };
   }
   function verdict(ev, grade) {
     if (!ev) return { cls: "chip-none", txt: "—" };
     if (grade === "reference" || grade === "biased") return { cls: "chip-skip", txt: "SKIP" };
-    if (ev.edge * 100 < state.minEdge) return { cls: "chip-thin", txt: "THIN" };
+    if (ev.edge * 100 < MIN_EDGE) return { cls: "chip-thin", txt: "THIN" };
     if (grade === "caution") return { cls: "chip-thin", txt: "CARE" };
     return { cls: "chip-play", txt: "PLAY" };
   }
 
   var pct = function (v) { return Math.round(v * 100) + "%"; };
   var pct1 = function (v) { return (v * 100).toFixed(1) + "%"; };
-  var money = function (v) {
-    return "$" + v.toLocaleString("en-US", { maximumFractionDigits: 0 });
-  };
   var signed = function (v) { return (v >= 0 ? "+" : "") + v.toFixed(1); };
   var signedInt = function (v) {
     if (v === null || v === undefined) return "—";
     return (v > 0 ? "+" : "") + v;
   };
+  // A posted price, in whichever format the viewer picked. The odds-format
+  // control has to reach every price on the page, not only the ones the
+  // calculator derives.
+  function priceShown(american) {
+    if (american === null || american === undefined) return "—";
+    if (state.fmt !== "dec") return signedInt(american);
+    var d = toDecimal(american);
+    return d === null ? "—" : d.toFixed(2);
+  }
 
   /** Plain-English strength of the lean, so a number is not the only cue. */
   function leanWord(p) {
@@ -287,7 +289,7 @@
     // One row of figures, not a second bordered grid: the card already has
     // one above it, and two identical grids flattened the card.
     [["book", L.book],
-     ["price", signedInt(L.side === g.h ? L.hml : L.aml)],
+     ["price", priceShown(L.side === g.h ? L.hml : L.aml)],
      ["model", pct1(L.pm)],
      ["line", pct1(L.pk)],
      ["need", breakEven(L.pm)],
@@ -318,7 +320,6 @@
     var v = verdict(ev, grade);
     td(tr, ev ? signed(ev.ev100) : "—",
        "num hide-s " + (ev ? (ev.ev100 > 0 ? "pos" : "neg") : "zero"));
-    td(tr, ev && v.txt === "PLAY" ? money(ev.stake) : "—", "num zero");
     var vd = el("td");
     vd.appendChild(el("span", "chip " + v.cls, v.txt));
     tr.appendChild(vd);
@@ -466,7 +467,7 @@
       var t = el("table", "ptable");
       var th = el("thead");
       var htr = el("tr");
-      ["Market", "Model", "Fair", "Book", "Edge", "EV/$100", "Stake", ""]
+      ["Market", "Model", "Fair", "Book", "Edge", "EV/$100", ""]
         .forEach(function (h, i) {
           var c = el("th", i === 5 ? "hide-s" : null, h);
           htr.appendChild(c);
@@ -610,6 +611,20 @@
     return d;
   }
 
+  function segControl(opts, current, pick, label) {
+    var seg = el("div", "seg");
+    seg.setAttribute("role", "group");
+    seg.setAttribute("aria-label", label);
+    opts.forEach(function (o) {
+      var b = el("button", null, o[1]);
+      b.type = "button";
+      b.setAttribute("aria-pressed", current === o[0] ? "true" : "false");
+      b.addEventListener("click", function () { pick(o[0]); });
+      seg.appendChild(b);
+    });
+    return seg;
+  }
+
   function valueRows(todays) {
     return todays.map(function (g) {
       var L = lineFor(g);
@@ -647,18 +662,13 @@
     var h = el("div", "striphead");
     h.appendChild(el("h3", null, "The board"));
     h.appendChild(el("span", "lmuted", LINE_AT ? "prices " + LINE_AT : ""));
-    var seg = el("div", "seg");
-    [["edge", "Edge"], ["conf", "Model"], ["gap", "Disagreement"]]
-      .forEach(function (o) {
-        var b = el("button", null, o[1]);
-        b.type = "button";
-        b.setAttribute("aria-pressed", sortBy === o[0] ? "true" : "false");
-        b.addEventListener("click", function () {
-          sortBy = o[0];
-          renderSlate();
-        });
-        seg.appendChild(b);
-      });
+    h.appendChild(segControl(
+      [["am", "American"], ["dec", "Decimal"]], state.fmt,
+      function (v) { state.fmt = v; save(); renderSlate(); },
+      "Odds format"));
+    var seg = segControl(
+      [["edge", "Edge"], ["conf", "Model"], ["gap", "Disagreement"]], sortBy,
+      function (v) { sortBy = v; renderSlate(); }, "Sort by");
     h.appendChild(seg);
     box.appendChild(h);
 
@@ -691,7 +701,7 @@
       td(tr, r.g.a + " @ " + r.g.h);
       td(tr, pct1(r.L.pm), "num");
       td(tr, pct1(r.L.pk), "num");
-      td(tr, signedInt(r.L.side === r.g.h ? r.L.hml : r.L.aml), "num");
+      td(tr, priceShown(r.L.side === r.g.h ? r.L.hml : r.L.aml), "num");
       td(tr, breakEven(r.L.pm), "num zero");
       td(tr, signed(r.L.edge * 100) + "%",
          "num " + (r.L.edge > 0 ? "pos" : "neg"));
@@ -739,7 +749,6 @@
     var title = document.getElementById("dayTitle");
     title.textContent = dayLong(state.day) + " ";
     title.appendChild(el("span", "cnt", anyDone ? "· results" : "· predictions"));
-    document.getElementById("oddsctl").hidden = !state.odds || anyDone;
     renderRecord(todays, anyDone);
 
     if (!todays.length) {
@@ -766,33 +775,6 @@
     om.addEventListener("change", function (e) {
       state.odds = e.target.checked; save(); renderSlate();
     });
-    document.getElementById("bankroll").value = state.bankroll;
-    document.getElementById("kelly").value = String(state.kelly);
-    document.getElementById("minedge").value = state.minEdge;
-    document.getElementById("fmt-am").setAttribute("aria-pressed", String(state.fmt === "am"));
-    document.getElementById("fmt-dec").setAttribute("aria-pressed", String(state.fmt === "dec"));
-    document.getElementById("fmt-am").addEventListener("click", function () {
-      state.fmt = "am";
-      document.getElementById("fmt-am").setAttribute("aria-pressed", "true");
-      document.getElementById("fmt-dec").setAttribute("aria-pressed", "false");
-      save(); renderSlate();
-    });
-    document.getElementById("fmt-dec").addEventListener("click", function () {
-      state.fmt = "dec";
-      document.getElementById("fmt-am").setAttribute("aria-pressed", "false");
-      document.getElementById("fmt-dec").setAttribute("aria-pressed", "true");
-      save(); renderSlate();
-    });
-    document.getElementById("bankroll").addEventListener("input", function (e) {
-      state.bankroll = Math.max(0, parseFloat(e.target.value) || 0); save(); renderSlate();
-    });
-    document.getElementById("kelly").addEventListener("change", function (e) {
-      state.kelly = parseFloat(e.target.value); save(); renderSlate();
-    });
-    document.getElementById("minedge").addEventListener("input", function (e) {
-      state.minEdge = Math.max(0, parseFloat(e.target.value) || 0); save(); renderSlate();
-    });
-
     renderDays();
     renderSlate();
   }

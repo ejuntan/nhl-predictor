@@ -70,4 +70,36 @@ all &= ck("edge", z.edge, 0, 1e-12);
 all &= ck("EV", z.ev100, 0, 1e-9);
 all &= ck("stake", z.stake, 0, 1e-12);
 
+// --- posted prices follow the odds-format control -----------------------
+// The control used to sit inside the calculator panel and only reached the
+// numbers the calculator derived, so switching to Decimal left every posted
+// price in American. Both formats are checked here against hand values.
+// ck() compares numerically, so these use a string comparison.
+function cks(label, got, want) {
+  var ok = got === want;
+  print((ok ? "PASS  " : "FAIL  ") + label + "  got=" + got + "  want=" + want);
+  return ok;
+}
+print("");
+print("-- a posted price renders in the chosen format --");
+var fmt = "am";
+function priceShown(american) {
+  if (american === null || american === undefined) return "\u2014";
+  if (fmt !== "dec") return (american > 0 ? "+" : "") + american;
+  var d = toDecimal(american);
+  return d === null ? "\u2014" : d.toFixed(2);
+}
+fmt = "am";
+all &= cks("-102 american", priceShown(-102), "-102");
+all &= cks("+124 american", priceShown(124), "+124");
+all &= cks("-305 american", priceShown(-305), "-305");
+all &= cks("no price posted", priceShown(null), "\u2014");
+fmt = "dec";
+all &= cks("-102 decimal", priceShown(-102), "1.98");
+all &= cks("+124 decimal", priceShown(124), "2.24");
+all &= cks("-305 decimal", priceShown(-305), "1.33");
+all &= cks("-110 decimal", priceShown(-110), "1.91");
+all &= cks("no price posted", priceShown(null), "\u2014");
+fmt = "am";
+
 print(all ? "\nALL MATH CHECKS PASS" : "\nFAILURES PRESENT");
