@@ -3,4 +3,5 @@
 # instead of minutes. The modelling stack is in requirements.txt and is
 # only needed on the machine that runs the pipeline.
 flask==3.0.3
+requests==2.32.3
 gunicorn==22.0.0

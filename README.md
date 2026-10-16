@@ -174,12 +174,27 @@ read the first fifty.
 ./publish.sh          # refresh, rebuild, commit the page, push
 ```
 
-`app.py` is a four-route Flask app that serves the page `daily.sh` builds:
-`/` the page, `/data.json` its payload, `/healthz` a freshness check that
-reports when the payload was built, how old the prices are and whether the
-slate has gone stale. `render.yaml` deploys it on the free plan with
-`requirements-web.txt` — Flask and gunicorn only, so the build takes seconds
-rather than installing the modelling stack it does not need.
+`app.py` serves the page `daily.sh` builds, and refreshes the part of it
+that moves during a day. The model's own prices do not change between
+pushes — the ratings behind them only move when games finish — but the
+sportsbook's numbers change all day, and those need nothing local. So
+`liveserve.py` refetches prices on a 15-minute timer, recomputes the no-vig
+probabilities, the edge and the measured bucket, and the server swaps that
+block into the page on its way out. The page itself is unchanged and stays a
+single self-contained file; it does not know it is being served live.
+
+What that leaves static until the next push: the model's prices, the
+finished-game panels (they come from the walk-forward backtest) and the prop
+tables (they need a 45 MB frame). `/healthz` says which is which.
+
+Routes:
+`/` the page, `/data.json` its payload, `/healthz` a freshness check.
+`render.yaml` deploys it on the free plan with `requirements-web.txt` —
+Flask, requests and gunicorn, no modelling stack, so the build takes
+seconds. The de-vig is reimplemented there in plain Python rather than
+importing numpy for arithmetic on twenty numbers; `mathtest.js` and a
+cross-check against `odds_eval.devig_logarithmic` keep the two in step
+(they agree to 3e-16).
 
 **The model is not rebuilt on Render, deliberately.** The MLB apps in this
 account can compute at request time because they pull from a free API with
