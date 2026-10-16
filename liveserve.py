@@ -30,6 +30,7 @@ import requests
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "out", "tool_data.json")
 TTL = int(os.environ.get("NHL_REFRESH_TTL", "900"))        # 15 minutes
+SCORE = "https://api-web.nhle.com/v1/score/{}"
 SB = "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard?dates={}"
 OD = ("https://sports.core.api.espn.com/v2/sports/hockey/leagues/nhl/"
       "events/{0}/competitions/{0}/odds")
@@ -145,6 +146,51 @@ def fetch_lines(games):
     return out, seen
 
 
+def refresh_scores(p):
+    """Update games under way, and retire the ones that have finished.
+
+    A game in progress is the one thing on this page that changes minute to
+    minute, so a payload built this morning is wrong about it by the
+    evening. The score endpoint is public and costs one call per date.
+    """
+    inplay = p.get("inplay") or []
+    if not inplay:
+        return 0
+    moved, done = 0, []
+    for day in sorted({g["d"] for g in inplay}):
+        js = _get(SCORE.format(day))
+        if not js:
+            continue
+        by = {int(x["id"]): x for x in (js.get("games") or [])}
+        for g in inplay:
+            if g["d"] != day:
+                continue
+            row = next((v for v in by.values()
+                        if v["homeTeam"]["abbrev"] == g["h"]
+                        and v["awayTeam"]["abbrev"] == g["a"]), None)
+            if not row:
+                continue
+            st = row.get("gameState")
+            g["hsc"] = int(row["homeTeam"].get("score") or 0)
+            g["asc"] = int(row["awayTeam"].get("score") or 0)
+            pd_ = row.get("periodDescriptor") or {}
+            g["per"] = pd_.get("periodType") or ""
+            g["pn"] = pd_.get("number")
+            g["clk"] = (row.get("clock") or {}).get("timeRemaining")
+            moved += 1
+            # Once it is final it belongs to the record, not to this list.
+            # The record itself is rebuilt by the nightly push, which has
+            # the backtest; until then the game simply stops being live.
+            if st in ("OFF", "FINAL"):
+                done.append(g)
+            else:
+                g["st"] = st
+    if done:
+        p["inplay"] = [g for g in inplay if g not in done]
+        p["finished_since_build"] = len(done)
+    return moved
+
+
 def payload(force=False):
     now = time.time()
     with _lock:
@@ -157,6 +203,7 @@ def payload(force=False):
         _s["error"] = f"payload: {e}"
         return _s["payload"]
     try:
+        moved = refresh_scores(p)
         lines, n = fetch_lines(p.get("games", []))
         if n:
             p["lines"] = lines
@@ -164,7 +211,8 @@ def payload(force=False):
                 "%Y-%m-%d %H:%M UTC")
             src, err = "live odds", None
         else:
-            src, err = "build", "no prices posted"
+            src = "live scores" if moved else "build"
+            err = None if moved else "no prices posted"
     except Exception as e:
         src, err, n = "build", str(e), 0
     with _lock:
@@ -174,6 +222,8 @@ def payload(force=False):
 
 def status():
     age = time.time() - _s["at"] if _s["at"] else None
+    p = _s["payload"] or {}
     return {"data_source": _s["source"], "refresh_error": _s["error"],
+            "games_in_progress": len(p.get("inplay") or []),
             "lines_live": _s["lines"], "ttl_seconds": TTL,
             "refreshed_seconds_ago": round(age, 1) if age else None}

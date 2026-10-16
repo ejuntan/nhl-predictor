@@ -49,6 +49,9 @@ stage() { printf '\n=== %s  %s ===\n' "$1" "$(date '+%H:%M:%S')"; }
   $PY tool/build.py
 
   stage "tests"
+  cp out/tool_data.json /tmp/payload.json
+  $PY tool/maketruth.py
+  $JSC tool/rectest.js | tail -1
   $PY tool/linetest.py | tail -1
   $JSC tool/mathtest.js | tail -1
   $JSC tool/daytest.js | tail -1

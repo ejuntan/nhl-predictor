@@ -1,5 +1,6 @@
 """Compact JSON payload for the betting tool page."""
 import json
+import sqlite3
 
 import numpy as np
 import pandas as pd
@@ -81,6 +82,24 @@ def past_payload(nm):
     """
     bt = pd.read_pickle("data/backtest_preds.pkl")
     cur = bt[bt.season == "20262027"].copy()
+    # Where a prediction was logged before puck drop, that is the one that
+    # counts. The backtest is a different model instance -- fitted only
+    # through last season, where the live model is fitted through yesterday
+    # -- and the two can disagree on the side. Showing the backtest's call
+    # on a game the page had already called differently is a record of a
+    # prediction nobody saw.
+    try:
+        log = pd.read_csv("data/frozen_log.csv")[["game_id", "p_home"]]
+        log = log.rename(columns={"p_home": "p_logged"}).drop_duplicates(
+            "game_id")
+        cur = cur.merge(log, on="game_id", how="left")
+        n_log = int(cur.p_logged.notna().sum())
+        cur["src"] = np.where(cur.p_logged.notna(), "logged", "backtest")
+        cur["p_home"] = cur.p_logged.fillna(cur.p_home)
+        cur["p_away"] = 1 - cur.p_home
+    except FileNotFoundError:
+        cur["src"], n_log = "backtest", 0
+    print(f"  past games using the logged prediction: {n_log} of {len(cur)}")
     games = []
     for r in cur.sort_values(["date", "game_id"]).itertuples(index=False):
         pick_home = r.p_home > 0.5
@@ -97,6 +116,7 @@ def past_payload(nm):
             "hsc": int(r.home_score), "asc": int(r.away_score),
             "wentot": int(r.went_ot), "atot": int(r.total_goals),
             "hit": int(bool(pick_home) == bool(r.home_win == 1)),
+            "src": r.src,
         })
 
     pr = pd.read_pickle("data/props_preds.pkl")
@@ -195,6 +215,49 @@ def line_payload():
     return out, str(d.attrs.get("fetched_at", ""))
 
 
+def in_progress_payload():
+    """Games under way: neither finished nor upcoming, and previously shown
+    nowhere at all.
+
+    The pre-game call comes from the frozen log where there is one, because
+    that is the prediction actually committed to before puck drop. The
+    walk-forward backtest is the fallback for games played before the log
+    began on 2026-10-14; it is a different model instance and can differ on
+    the side, so the two are never mixed silently -- each row says which it
+    came from.
+    """
+    con = sqlite3.connect("data/nhl.sqlite3", timeout=60)
+    g = pd.read_sql("""SELECT game_id, date, away, home, state,
+                              away_score, home_score
+                       FROM games WHERE state IN ('LIVE','CRIT','PRE')
+                       ORDER BY date, game_id""", con)
+    if g.empty:
+        return []
+    try:
+        log = pd.read_csv("data/frozen_log.csv")[["game_id", "p_home"]]
+        log["src"] = "logged"
+    except FileNotFoundError:
+        log = pd.DataFrame(columns=["game_id", "p_home", "src"])
+    bt = pd.read_pickle("data/backtest_preds.pkl")[["game_id", "p_home"]]
+    bt["src"] = "backtest"
+    pre = pd.concat([log, bt]).drop_duplicates("game_id", keep="first")
+    g = g.merge(pre, on="game_id", how="left")
+
+    out = []
+    for r in g.itertuples(index=False):
+        if pd.isna(r.p_home):
+            continue
+        out.append({
+            "d": r.date, "a": r.away, "h": r.home,
+            "ph": round(float(r.p_home), 4),
+            "pa": round(1 - float(r.p_home), 4),
+            "src": r.src,
+            "hsc": int(r.home_score) if pd.notna(r.home_score) else 0,
+            "asc": int(r.away_score) if pd.notna(r.away_score) else 0,
+            "st": r.state})
+    return out
+
+
 def main():
     live = pd.read_pickle("data/live_preds.pkl")
     props = pd.read_pickle("data/live_props.pkl")
@@ -269,6 +332,7 @@ def main():
         "games": games,
         "props": plist,
         "saves": saves,
+        "inplay": in_progress_payload(),
         "past": past["games"],
         "pastProps": past["props"],
         "record": past["record"],
@@ -288,7 +352,8 @@ def main():
     js = json.dumps(payload, separators=(",", ":"))
     open("out/tool_data.json", "w").write(js)
     print(f"upcoming games {len(games)}  props {len(plist)}  "
-          f"saves {len(saves)}  posted lines {len(lines)}")
+          f"saves {len(saves)}  posted lines {len(lines)}  "
+          f"in progress {len(payload['inplay'])}")
     print(f"past games {len(past['games'])}  past props {len(past['props'])}"
           f"  record {past['record']['w']}-{past['record']['l']}"
           f" ({past['record']['acc']:.1%})")

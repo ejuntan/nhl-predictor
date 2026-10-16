@@ -6,10 +6,13 @@
   var RECORD = DATA.record || { w: 0, l: 0, acc: 0 };
   var LINES = DATA.lines || {}, BUCKETS = DATA.buckets || {};
   var SAVES = DATA.saves || [];
+  var INPLAY = DATA.inplay || [];
   var VP = DATA.valuePicks || null;
   var LINE_AT = DATA.lineAt || "";
-  // Past days come first, then the upcoming slate.
-  var ALL = PAST.concat(GAMES);
+  // Past days come first, then games under way, then the upcoming slate.
+  // A game in progress used to appear in neither list: it is no longer
+  // FUT, so it was not upcoming, and not yet FINAL, so it was not past.
+  var ALL = PAST.concat(INPLAY, GAMES);
 
   var TEAM = {
     ANA: "Anaheim", BOS: "Boston", BUF: "Buffalo", CAR: "Carolina",
@@ -173,6 +176,11 @@
       var e = map[g.d] || (map[g.d] = { d: g.d, n: 0, w: 0, l: 0, past: false });
       e.n += 1;
     });
+    INPLAY.forEach(function (g) {
+      var e = map[g.d] || (map[g.d] = { d: g.d, n: 0, w: 0, l: 0, past: false });
+      e.n += 1;
+      e.live = (e.live || 0) + 1;
+    });
     return Object.keys(map).sort().map(function (d) { return map[d]; });
   }
   function dayRecord(d) {
@@ -298,7 +306,10 @@
         ((p.t === g.h && p.o === g.a) || (p.t === g.a && p.o === g.h));
     }).sort(function (a, b) { return b.xs - a.xs; });
   }
-  function isPast(g) { return g.hsc !== undefined && g.hsc !== null; }
+  function isLive(g) { return !!g.st; }
+  function isPast(g) {
+    return !isLive(g) && g.hsc !== undefined && g.hsc !== null;
+  }
   function gkey(g) { return g.d + "|" + g.a + g.h; }
   function lineFor(g) { return LINES[gkey(g)] || null; }
 
@@ -375,6 +386,48 @@
     return tr;
   }
 
+  function liveCard(g) {
+    var card = el("div", "game live");
+    var head = el("div", "ghead");
+    var mu = el("div", "matchup");
+    mu.appendChild(document.createTextNode(name(g.a)));
+    mu.appendChild(el("span", "at", "at"));
+    mu.appendChild(document.createTextNode(name(g.h)));
+    head.appendChild(mu);
+    var pick = g.ph > 0.5 ? g.h : g.a;
+    var conf = Math.max(g.ph, g.pa);
+    var res = el("div", "res");
+    if (g.pn) {
+      var per = g.per === "OT" ? "OT" : (g.per === "SO" ? "SO" : "P" + g.pn);
+      res.appendChild(el("span", "lmuted",
+        per + (g.clk ? " · " + g.clk : "")));
+    }
+    res.appendChild(el("span", "chip chip-live",
+      g.st === "CRIT" ? "final minutes" : "in progress"));
+    head.appendChild(res);
+    card.appendChild(head);
+
+    var sc = el("div", "score");
+    var lead = g.asc === g.hsc ? null : (g.asc > g.hsc ? g.a : g.h);
+    var aw = el("span", lead === g.a ? "win" : "wl", g.a + " " + g.asc);
+    var hm = el("span", lead === g.h ? "win" : "wl", g.h + " " + g.hsc);
+    sc.appendChild(aw);
+    sc.appendChild(el("span", "wl", "–"));
+    sc.appendChild(hm);
+    card.appendChild(sc);
+
+    var p = el("p", "lwhy");
+    p.appendChild(document.createTextNode(
+      "Called " + name(pick) + " at " + pct1(conf) + " before the game"));
+    // Never let a logged prediction and a backtest one pass for the same
+    // thing: they come from different model instances and can disagree on
+    // the side.
+    p.appendChild(el("span", "flag", g.src === "logged"
+      ? "logged pre-game" : "backtest estimate"));
+    card.appendChild(p);
+    return card;
+  }
+
   function gameCard(g) {
     var done = isPast(g);
     var card = el("div", "game" + (done
@@ -391,6 +444,13 @@
     var favName = favHome ? name(g.h) : name(g.a);
     if (done) {
       var res = el("div", "res");
+      if (g.src === "backtest") {
+        var b = el("span", "flag", "backtest estimate");
+        b.title = "Played before the pre-game log began, so this is the "
+          + "walk-forward model's call rather than one that was recorded "
+          + "in advance.";
+        res.appendChild(b);
+      }
       res.appendChild(el("span", "chip " + (g.hit ? "chip-hit" : "chip-miss"),
         g.hit ? "CALLED IT" : "MISSED"));
       var sub = el("span", "pick");
@@ -793,9 +853,12 @@
     host.textContent = "";
     var todays = ALL.filter(function (g) { return g.d === state.day; });
     var anyDone = todays.some(isPast);
+    var anyLive = todays.some(isLive);
     var title = document.getElementById("dayTitle");
     title.textContent = dayLong(state.day) + " ";
-    title.appendChild(el("span", "cnt", anyDone ? "· results" : "· predictions"));
+    title.appendChild(el("span", "cnt",
+      anyLive ? "· " + todays.filter(isLive).length + " under way"
+              : (anyDone ? "· results" : "· predictions")));
     renderRecord(todays, anyDone);
 
     if (!todays.length) {
@@ -804,7 +867,9 @@
     }
     if (!anyDone) host.appendChild(valueFinder(todays));
     var frag = document.createDocumentFragment();
-    todays.forEach(function (g) { frag.appendChild(gameCard(g)); });
+    todays.forEach(function (g) {
+      frag.appendChild(isLive(g) ? liveCard(g) : gameCard(g));
+    });
     host.appendChild(frag);
   }
 
