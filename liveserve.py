@@ -154,14 +154,39 @@ def refresh_scores(p):
     evening. The score endpoint is public and costs one call per date.
     """
     inplay = p.get("inplay") or []
-    if not inplay:
-        return 0
-    moved, done = 0, []
-    for day in sorted({g["d"] for g in inplay}):
+    upcoming = p.get("games") or []
+    # The in-play list is built when the page is built, and the nightly
+    # build runs in the morning, when nothing is under way. So a game that
+    # starts tonight would never appear as live at all unless upcoming
+    # games are promoted here. Dates come from the payload rather than from
+    # a clock, which avoids guessing the league's own date convention.
+    days = sorted({g["d"] for g in inplay}
+                  | set(sorted({g["d"] for g in upcoming})[:2]))
+    moved, done, promoted = 0, [], []
+    for day in days:
         js = _get(SCORE.format(day))
         if not js:
             continue
         by = {int(x["id"]): x for x in (js.get("games") or [])}
+
+        for g in upcoming:
+            if g["d"] != day:
+                continue
+            row = next((v for v in by.values()
+                        if v["homeTeam"]["abbrev"] == g["h"]
+                        and v["awayTeam"]["abbrev"] == g["a"]), None)
+            if not row or row.get("gameState") not in ("LIVE", "CRIT"):
+                continue
+            pd_ = row.get("periodDescriptor") or {}
+            promoted.append({
+                "d": g["d"], "a": g["a"], "h": g["h"],
+                "ph": g["ph"], "pa": g["pa"], "src": "logged",
+                "hsc": int(row["homeTeam"].get("score") or 0),
+                "asc": int(row["awayTeam"].get("score") or 0),
+                "st": row.get("gameState"),
+                "per": pd_.get("periodType") or "", "pn": pd_.get("number"),
+                "clk": (row.get("clock") or {}).get("timeRemaining")})
+
         for g in inplay:
             if g["d"] != day:
                 continue
@@ -185,10 +210,15 @@ def refresh_scores(p):
                 done.append(g)
             else:
                 g["st"] = st
-    if done:
-        p["inplay"] = [g for g in inplay if g not in done]
+    if done or promoted:
+        keep = [g for g in inplay if g not in done]
+        p["inplay"] = keep + promoted
+        if promoted:
+            started = {(g["d"], g["a"], g["h"]) for g in promoted}
+            p["games"] = [g for g in upcoming
+                          if (g["d"], g["a"], g["h"]) not in started]
         p["finished_since_build"] = len(done)
-    return moved
+    return moved + len(promoted)
 
 
 def payload(force=False):

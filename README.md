@@ -178,9 +178,18 @@ read the first fifty.
 that moves during a day. The model's own prices do not change between
 pushes — the ratings behind them only move when games finish — but the
 sportsbook's numbers change all day, and those need nothing local. So
-`liveserve.py` refetches prices on a 15-minute timer, recomputes the no-vig
-probabilities, the edge and the measured bucket, and the server swaps that
-block into the page on its way out. The page itself is unchanged and stays a
+`liveserve.py` refetches prices and live scores on a 15-minute timer,
+recomputes the no-vig probabilities, the edge and the measured bucket, and
+the server swaps that block into the page on its way out. It also promotes
+an upcoming game to in-progress once the league says it has started, which
+matters because the nightly build runs in the morning, when nothing is under
+way — without that, a game beginning tonight would never show as live.
+
+The refresh is lazy, not a background thread: the first request after the
+15 minutes are up pays for it and everyone after that is served the cache.
+On Render's free plan the instance also sleeps after about 15 idle minutes,
+so the first visit after a quiet spell waits for both the wake and the
+refresh. The page itself is unchanged and stays a
 single self-contained file; it does not know it is being served live.
 
 What that leaves static until the next push: the model's prices, the
