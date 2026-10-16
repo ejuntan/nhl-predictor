@@ -29,7 +29,12 @@ import requests
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "out", "tool_data.json")
-TTL = int(os.environ.get("NHL_REFRESH_TTL", "900"))        # 15 minutes
+# Scores and prices move at different speeds, so they get different clocks.
+# A game's score changes minute to minute; a moneyline drifts over hours.
+# One shared timer would mean either stale scores or three times the odds
+# calls for nothing.
+SCORE_TTL = int(os.environ.get("NHL_SCORE_TTL", "300"))     # 5 minutes
+ODDS_TTL = int(os.environ.get("NHL_ODDS_TTL", "900"))       # 15 minutes
 SCORE = "https://api-web.nhle.com/v1/score/{}"
 SB = "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard?dates={}"
 OD = ("https://sports.core.api.espn.com/v2/sports/hockey/leagues/nhl/"
@@ -39,8 +44,8 @@ ESPN_TO_NHL = {"LA": "LAK", "NJ": "NJD", "SJ": "SJS", "TB": "TBL",
                "UTAH": "UTA"}
 
 _lock = threading.Lock()
-_s = {"payload": None, "at": 0.0, "source": "build", "error": None,
-      "lines": 0}
+_s = {"payload": None, "scores_at": 0.0, "odds_at": 0.0, "built": 0.0,
+      "source": "build", "error": None, "lines": 0}
 
 
 def _get(url, tries=2):
@@ -222,38 +227,78 @@ def refresh_scores(p):
 
 
 def payload(force=False):
+    """The build's payload, with scores and prices refreshed on their own
+    clocks.
+
+    The working copy is kept between requests rather than rebuilt from the
+    file each time, because a game promoted to in-progress should stay
+    promoted. The file is reread only when it changes on disk, which is
+    what a deploy looks like from in here.
+    """
     now = time.time()
-    with _lock:
-        if _s["payload"] is not None and not force and now - _s["at"] < TTL:
-            return _s["payload"]
     try:
-        with open(STATIC) as f:
-            p = json.load(f)
-    except Exception as e:                     # nothing to serve at all
+        mtime = os.path.getmtime(STATIC)
+    except OSError as e:
         _s["error"] = f"payload: {e}"
         return _s["payload"]
-    try:
-        moved = refresh_scores(p)
-        lines, n = fetch_lines(p.get("games", []))
-        if n:
-            p["lines"] = lines
-            p["lineAt"] = datetime.now(timezone.utc).strftime(
-                "%Y-%m-%d %H:%M UTC")
-            src, err = "live odds", None
-        else:
-            src = "live scores" if moved else "build"
-            err = None if moved else "no prices posted"
-    except Exception as e:
-        src, err, n = "build", str(e), 0
+
     with _lock:
-        _s.update(payload=p, at=now, source=src, error=err, lines=n)
-    return p
+        p = _s["payload"]
+        stale_build = p is None or mtime != _s["built"]
+        need_scores = stale_build or force or now - _s["scores_at"] >= SCORE_TTL
+        need_odds = stale_build or force or now - _s["odds_at"] >= ODDS_TTL
+        if not (need_scores or need_odds):
+            return p
+
+    if stale_build:
+        try:
+            with open(STATIC) as f:
+                p = json.load(f)
+        except Exception as e:
+            _s["error"] = f"payload: {e}"
+            return _s["payload"]
+        with _lock:
+            _s.update(payload=p, built=mtime, scores_at=0.0, odds_at=0.0)
+
+    err = None
+    if need_scores:
+        try:
+            n = refresh_scores(p)
+            with _lock:
+                _s["scores_at"] = now
+            if n:
+                _s["source"] = "live scores"
+        except Exception as e:
+            err = f"scores: {e}"
+    if need_odds:
+        try:
+            lines, n = fetch_lines(p.get("games", []))
+            if n:
+                p["lines"] = lines
+                p["lineAt"] = datetime.now(timezone.utc).strftime(
+                    "%Y-%m-%d %H:%M UTC")
+                _s["source"] = "live odds"
+            with _lock:
+                _s.update(odds_at=now, lines=n)
+        except Exception as e:
+            err = f"{err + '; ' if err else ''}odds: {e}"
+
+    with _lock:
+        _s["error"] = err
+        return _s["payload"]
 
 
 def status():
-    age = time.time() - _s["at"] if _s["at"] else None
+    now = time.time()
     p = _s["payload"] or {}
+
+    def age(k):
+        return round(now - _s[k], 1) if _s[k] else None
+
     return {"data_source": _s["source"], "refresh_error": _s["error"],
             "games_in_progress": len(p.get("inplay") or []),
-            "lines_live": _s["lines"], "ttl_seconds": TTL,
-            "refreshed_seconds_ago": round(age, 1) if age else None}
+            "lines_live": _s["lines"],
+            "scores": {"ttl_seconds": SCORE_TTL,
+                       "refreshed_seconds_ago": age("scores_at")},
+            "odds": {"ttl_seconds": ODDS_TTL,
+                     "refreshed_seconds_ago": age("odds_at")}}

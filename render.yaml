@@ -17,3 +17,10 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.6"
+      # Scores move minute to minute, prices drift over hours, so they are
+      # refreshed on separate clocks. Both are lazy: the first request after
+      # the interval pays for the refresh and the rest are served the cache.
+      - key: NHL_SCORE_TTL
+        value: "300"
+      - key: NHL_ODDS_TTL
+        value: "900"
