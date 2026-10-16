@@ -387,7 +387,9 @@
   }
 
   function liveCard(g) {
-    var card = el("div", "game live");
+    var fin = g.st === "FINAL" || g.st === "OFF";
+    var card = el("div", "game " + (fin ? "done " + (g.hit ? "won" : "lost")
+                                        : "live"));
     var head = el("div", "ghead");
     var mu = el("div", "matchup");
     mu.appendChild(document.createTextNode(name(g.a)));
@@ -397,13 +399,21 @@
     var pick = g.ph > 0.5 ? g.h : g.a;
     var conf = Math.max(g.ph, g.pa);
     var res = el("div", "res");
-    if (g.pn) {
+    if (!fin && g.pn) {
       var per = g.per === "OT" ? "OT" : (g.per === "SO" ? "SO" : "P" + g.pn);
       res.appendChild(el("span", "lmuted",
         per + (g.clk ? " · " + g.clk : "")));
     }
-    res.appendChild(el("span", "chip chip-live",
-      g.st === "CRIT" ? "final minutes" : "in progress"));
+    if (fin) {
+      if (g.per === "OT" || g.per === "SO") {
+        res.appendChild(el("span", "lmuted", g.per));
+      }
+      res.appendChild(el("span", "chip " + (g.hit ? "chip-hit" : "chip-miss"),
+        g.hit ? "called it" : "missed"));
+    } else {
+      res.appendChild(el("span", "chip chip-live",
+        g.st === "CRIT" ? "final minutes" : "in progress"));
+    }
     head.appendChild(res);
     card.appendChild(head);
 
@@ -424,6 +434,12 @@
     // the side.
     p.appendChild(el("span", "flag", g.src === "logged"
       ? "logged pre-game" : "backtest estimate"));
+    if (fin) {
+      // Said plainly, because the day's record above will not match a
+      // count of the cards until the overnight rebuild.
+      p.appendChild(document.createTextNode(
+        " · final since this page was built, so not in the record below yet"));
+    }
     card.appendChild(p);
     return card;
   }
@@ -759,6 +775,21 @@
       RECORD.w + "-" + RECORD.l));
     host.appendChild(document.createTextNode(
       "(" + pct(RECORD.acc) + " of " + (RECORD.w + RECORD.l) + " games)"));
+
+    // Games that finished after this page was built are shown on the day
+    // but are not in the figures above, which come from the build. Saying
+    // so is better than a day reading 6-0 above four cards marked missed.
+    var late = INPLAY.filter(function (g) {
+      return g.d === state.day && (g.st === "FINAL" || g.st === "OFF");
+    });
+    if (late.length) {
+      var w = late.filter(function (g) { return g.hit; }).length;
+      host.appendChild(el("span", "sep", "·"));
+      host.appendChild(el("span", "lmuted",
+        late.length + (late.length === 1 ? " game" : " games")
+        + " finished since this page was built ("
+        + w + "-" + (late.length - w) + "), not counted above"));
+    }
     host.hidden = false;
   }
 
@@ -857,7 +888,9 @@
     var title = document.getElementById("dayTitle");
     title.textContent = dayLong(state.day) + " ";
     title.appendChild(el("span", "cnt",
-      anyLive ? "· " + todays.filter(isLive).length + " under way"
+      anyLive ? "· " + todays.filter(function (x) {
+                  return isLive(x) && x.st !== "FINAL" && x.st !== "OFF";
+                }).length + " under way"
               : (anyDone ? "· results" : "· predictions")));
     renderRecord(todays, anyDone);
 

@@ -167,7 +167,7 @@ def refresh_scores(p):
     # a clock, which avoids guessing the league's own date convention.
     days = sorted({g["d"] for g in inplay}
                   | set(sorted({g["d"] for g in upcoming})[:2]))
-    moved, done, promoted = 0, [], []
+    moved, promoted = 0, []
     for day in days:
         js = _get(SCORE.format(day))
         if not js:
@@ -208,21 +208,22 @@ def refresh_scores(p):
             g["pn"] = pd_.get("number")
             g["clk"] = (row.get("clock") or {}).get("timeRemaining")
             moved += 1
-            # Once it is final it belongs to the record, not to this list.
-            # The record itself is rebuilt by the nightly push, which has
-            # the backtest; until then the game simply stops being live.
+            g["st"] = st
+            # A game that finishes during the day is kept, not dropped.
+            # Retiring it from this list removed it from the page entirely,
+            # because the record it belongs in is only rebuilt by the
+            # nightly push -- so four of Thursday's eleven games were
+            # showing nowhere at all. It stays here, marked final, until
+            # that rebuild folds it into the record properly.
             if st in ("OFF", "FINAL"):
-                done.append(g)
-            else:
-                g["st"] = st
-    if done or promoted:
-        keep = [g for g in inplay if g not in done]
-        p["inplay"] = keep + promoted
-        if promoted:
-            started = {(g["d"], g["a"], g["h"]) for g in promoted}
-            p["games"] = [g for g in upcoming
-                          if (g["d"], g["a"], g["h"]) not in started]
-        p["finished_since_build"] = len(done)
+                g["hit"] = int((g["ph"] > 0.5) == (g["hsc"] > g["asc"]))
+    if promoted:
+        p["inplay"] = inplay + promoted
+        started = {(g["d"], g["a"], g["h"]) for g in promoted}
+        p["games"] = [g for g in upcoming
+                      if (g["d"], g["a"], g["h"]) not in started]
+    p["finished_since_build"] = sum(
+        1 for g in (p.get("inplay") or []) if g.get("st") in ("OFF", "FINAL"))
     return moved + len(promoted)
 
 
