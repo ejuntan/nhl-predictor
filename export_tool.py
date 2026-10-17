@@ -74,6 +74,73 @@ MARKETS = {
 }
 
 
+def breakeven(p):
+    """The American price at which a bet at probability p is exactly even."""
+    if not 0 < p < 1:
+        return None
+    return int(-round(100 * p / (1 - p)) if p >= 0.5
+               else round(100 * (1 - p) / p))
+
+
+def top_props(p):
+    """Fifteen props a day, by the rule props_top.py validated.
+
+    The model departs from a player's own recent average; the holdout says
+    that departure is where its skill is, and that the departure is almost
+    always downward because a recent average over-states a shooter (it runs
+    +0.022 shots high on holdout against the model's -0.001). So the list
+    comes out mostly unders, and that is the finding rather than a fault.
+    """
+    from scipy.stats import nbinom
+    # The caller has already renamed the dotted columns, as itertuples
+    # requires; use those names.
+    LINES = [(1.5, "p15"), (2.5, "p25"), (3.5, "p35")]
+    rows = []
+    for ln, col in LINES:
+        k = int(ln)
+        size = p.nb_size.values
+        # The same negative binomial, fed the player's own recent average:
+        # the hand baseline the model has to beat to be worth anything.
+        base = 1 - nbinom.cdf(k, size, size / (size + p.e_sog.values))
+        pm = p[col].values
+        over = pm > base
+        rows.append(pd.DataFrame({
+            "date": p.date.values, "pid": p.player_id.values,
+            "n": p.player.values, "t": p.team.values, "o": p.opp.values,
+            "hm": p.is_home.values.astype(int), "ln": ln,
+            "over": over.astype(int),
+            "p": np.where(over, pm, 1 - pm),
+            "b": np.where(over, base, 1 - base),
+            "xs": p.exp_sog.values, "es": p.e_sog.values,
+            "gap": np.abs(pm - base),
+        }))
+    a = pd.concat(rows, ignore_index=True)
+    # Both bars: the model must disagree with the recent average, and must
+    # rate its own side better than a coin flip by a clear margin.
+    a = a[a.p >= 0.55]
+    a = (a.sort_values("gap", ascending=False)
+          .groupby(["date", "pid"]).head(1)          # one line per player
+          .sort_values("gap", ascending=False)
+          .groupby("date").head(15))
+    out = {}
+    for d, grp in a.groupby("date"):
+        picks = []
+        for r in grp.sort_values("gap", ascending=False).itertuples():
+            # Price the rounded probability, not the full-precision one, so
+            # a reader checking the break-even against the percentage the
+            # page shows him gets the same answer.
+            pr = round(float(r.p), 4)
+            picks.append({
+                "n": r.n, "t": r.t, "o": r.o, "hm": int(r.hm),
+                "ln": float(r.ln), "ov": int(r.over),
+                "p": pr, "b": round(float(r.b), 4),
+                "xs": round(float(r.xs), 2), "es": round(float(r.es), 2),
+                "be": breakeven(pr),
+            })
+        out[str(d)] = picks
+    return out
+
+
 def past_payload(nm):
     """Played games with the prediction the model actually made beforehand.
 
@@ -174,6 +241,41 @@ BUCKETS = {
 
 # Every game where the model showed an edge over the posted price, which is
 # the filter the MLB page's value finder uses.
+# ---------------------------------------------------------------------------
+# The prop shortlist.
+#
+# There are no posted prop prices in this payload, so "best" cannot mean edge
+# against a book. What it can mean is the model's one established prop claim:
+# it beats a player's own recent average. props_top.py measures where that
+# advantage lives, on the 143,334 holdout prop-lines the xG fit never saw.
+#
+# What it found, and why the rule is shaped the way it is:
+#   * Skill over the baseline rises with the size of the disagreement:
+#     +0.06% of its error removed under a 2-point gap, +6.3% over 12 points.
+#   * Ranking by the model's raw confidence instead is useless for betting --
+#     it returns 99% props that need -7529 to break even.
+#   * The gap alone takes sides the model itself rates under 50%; 37% of such
+#     a list, and those came in 38.7% of the time. Hence the 55% floor.
+#   * Rank within the fifteen carries no information (67.0 / 66.3 / 68.2% for
+#     ranks 1-5, 6-10, 11-15), so the page must not number them.
+#   * The 2-point over-confidence is not a level shift: fitted on the first
+#     half of the holdout and applied to the second it made calibration
+#     worse (+2.1% against -0.9% uncorrected). So nothing is corrected and
+#     the model's own number is shown, with the measured shortfall stated.
+#   * One line per player rather than letting a man repeat: same calibration,
+#     and the group needs -180 rather than -204, so the prices are reachable.
+TOP_PROPS = {
+    "n": 2669, "days": 178, "model": 0.660, "actual": 0.643, "be": -180,
+    "lo": -196, "hi": -166,
+    # Split so the page can set the measured half in bold without having to
+    # cut a sentence apart at a marker.
+    "head": "Over 178 holdout days this shortlist's side came in 64.3% of "
+            "the time against the 66.0% the model claimed",
+    "tail": "\u2014 about two points optimistic, and that shortfall moves "
+            "around too much to correct. Treat the model's number as a "
+            "ceiling and the break-even price as the bar a book has to clear.",
+}
+
 VALUE_PICKS = {"n": 577, "win": 0.532, "roi": -0.026,
                "lo": -0.1021, "hi": 0.0503}
 
@@ -324,6 +426,8 @@ def main():
             "p305": round(float(r.p305), 4),
         })
 
+    tops = top_props(p)
+
     past = past_payload(nm)
     lines, line_at = line_payload()
     payload = {
@@ -341,6 +445,8 @@ def main():
         "lineAt": line_at,
         "buckets": BUCKETS,
         "valuePicks": VALUE_PICKS,
+        "topProps": tops,
+        "topPropsEvidence": TOP_PROPS,
         "evidence": {
             "ml_logloss": 0.68187, "ml_brier": 0.24452, "ml_acc": 0.5460,
             "ml_games": 1414, "market_logloss": 0.6788,
@@ -354,6 +460,8 @@ def main():
     print(f"upcoming games {len(games)}  props {len(plist)}  "
           f"saves {len(saves)}  posted lines {len(lines)}  "
           f"in progress {len(payload['inplay'])}")
+    print(f"prop shortlist: {sum(len(v) for v in tops.values())} picks "
+          f"over {len(tops)} days")
     print(f"past games {len(past['games'])}  past props {len(past['props'])}"
           f"  record {past['record']['w']}-{past['record']['l']}"
           f" ({past['record']['acc']:.1%})")

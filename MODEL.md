@@ -1292,3 +1292,81 @@ on shots on goal, which is a real and substantial piece of modelling, and it
 buys nothing against a counterparty who has also done the modelling. Prop
 markets are softer than moneylines, so the true answer sits somewhere
 between the columns — but the right column is the one to plan against.
+
+## 21. Fifteen props to shop (measured 2026-10-18)
+
+The page can rank props, but only if "best" means something that was
+measured. There are no posted prop prices in the payload, so edge against a
+book cannot be computed. What can be computed is this model's one
+established prop claim: it beats a player's own recent average. `props_top.py`
+asks where that advantage lives, on the 143,334 holdout prop-lines (2025-26
+and 2026-27, which the xG fit never saw).
+
+### The advantage is concentrated where the disagreement is large
+
+Grouping every prop-line by how far the model's probability sits from the
+same negative binomial fed the player's own recent average:
+
+| disagreement | n | model says | baseline says | actual | skill vs baseline |
+|---|---|---|---|---|---|
+| 0–2% | 71,524 | 43.5% | 42.7% | 43.5% | +0.06% |
+| 2–5% | 45,290 | 48.0% | 44.7% | 47.3% | +0.45% |
+| 5–8% | 17,959 | 50.7% | 44.4% | 49.4% | +1.14% |
+| 8–12% | 6,936 | 53.9% | 44.4% | 52.4% | +2.79% |
+| 12%+ | 1,625 | 57.2% | 42.9% | 55.3% | +6.30% |
+
+Monotone, and the far end removes a hundred times more of the baseline's
+error than the near end. That is the signal a shortlist can be built on.
+
+### Four things the measurement ruled out
+
+**Ranking by raw confidence is useless.** Taking the fifteen props the model
+is most sure about returns 99.2% propositions that come in 98.7% of the
+time — true, and they break even at −7529. Confidence is not value.
+
+**The disagreement alone is not enough.** 37% of a list built on gap alone
+are sides the model itself rates under 50%; those came in 38.7% of the time.
+A floor at 55% on the model's own probability removes them.
+
+**The over-confidence cannot be corrected.** The shortlist runs about two
+points optimistic. Fitting that as a level shift on the first half of the
+holdout and applying it to the second made calibration *worse* — +2.1%
+against −0.9% uncorrected. So nothing is corrected; the model's own number
+is shown and the shortfall is stated instead.
+
+**Position inside the fifteen means nothing.** Ranks 1–5, 6–10 and 11–15
+came in at 67.0%, 66.3% and 68.2%. The page therefore does not number them.
+
+### The rule as shipped
+
+One line per player (same calibration as letting a man repeat, but the group
+needs −180 rather than −204, so the prices are reachable), the model's side
+at 55% or better, then the fifteen biggest disagreements that day.
+
+| | n | model says | actual | needs |
+|---|---|---|---|---|
+| shipped rule | 2,669 | 66.0% | 64.3% | −180 (−196 to −166) |
+| repeats allowed | 2,670 | 69.1% | 67.2% | −204 |
+
+A full fifteen was available on all 178 holdout days.
+
+### Why it is almost all unders
+
+Because a player's recent average over-states him. On holdout the baseline
+runs **+0.022 shots high** against the model's **−0.001**, and on the top 1%
+of disagreements at the 2.5 line the actual mean was **2.51 shots** against
+the baseline's **3.11** and the model's **2.44**. The model is far nearer.
+Hot streaks regress and the recent average does not know it; the shortlist
+is that correction, so it points down.
+
+### What it is not
+
+It is not an edge. Without a posted price nothing here says these beat a
+book, and props carry roughly twice the hold of a moneyline. The shortlist
+says where the model's measured skill is concentrated and what price each
+pick needs; whether that price exists is the reader's to check.
+
+Guarded by `tool/proptest.py`, which re-derives every break-even, checks the
+side against the direction of the disagreement and against expected shots,
+and fails if a pick's probability or expected shots disagree with the props
+payload it came from.

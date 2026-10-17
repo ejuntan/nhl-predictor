@@ -53,6 +53,7 @@ stage() { printf '\n=== %s  %s ===\n' "$1" "$(date '+%H:%M:%S')"; }
   $PY tool/maketruth.py
   $JSC tool/rectest.js | tail -1
   $PY tool/linetest.py | tail -1
+  $PY tool/proptest.py | tail -1
   $JSC tool/mathtest.js | tail -1
   $JSC tool/daytest.js | tail -1
 

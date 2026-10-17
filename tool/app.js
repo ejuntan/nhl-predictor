@@ -8,6 +8,7 @@
   var SAVES = DATA.saves || [];
   var INPLAY = DATA.inplay || [];
   var VP = DATA.valuePicks || null;
+  var TOPP = DATA.topProps || {}, TOPE = DATA.topPropsEvidence || null;
   var LINE_AT = DATA.lineAt || "";
   // Past days come first, then games under way, then the upcoming slate.
   // A game in progress used to appear in neither list: it is no longer
@@ -903,6 +904,81 @@
     return box;
   }
 
+  /** Fifteen props a day, by the rule measured in props_top.py.
+   *  Not a ranking: the holdout says position inside the fifteen carries no
+   *  information, so they are listed in no order the reader should read
+   *  anything into, and nothing is numbered. */
+  function topPropsBlock(day) {
+    var picks = TOPP[day] || [];
+    if (!picks.length) return null;
+    var box = el("div", "strip");
+    var h = el("div", "striphead");
+    h.appendChild(el("h3", null, "Props to shop"));
+    h.appendChild(el("span", "lmuted",
+      picks.length + " where the model most disagrees with recent form"));
+    box.appendChild(h);
+
+    var w = el("div", "pwrap");
+    var t = el("table", "ptable");
+    var th = el("thead"), htr = el("tr");
+    ["Player", "Game", "The bet", "Model", "Recent form", "Shots",
+     "Needs"].forEach(function (x) { htr.appendChild(el("th", null, x)); });
+    th.appendChild(htr);
+    t.appendChild(th);
+    var tb = el("tbody");
+    picks.forEach(function (r) {
+      var away = r.hm ? r.o : r.t, home = r.hm ? r.t : r.o;
+      var g = { d: day, a: away, h: home };
+      var tr = el("tr", "jump");
+      tr.title = "Go to " + name(away) + " at " + name(home);
+      tr.addEventListener("click", function () { jumpTo(g); });
+
+      tr.appendChild(el("td", "pname", r.n));
+      var gc = el("td");
+      var a = el("a", "gl", away + " @ " + home);
+      a.href = "#" + anchorId(g);
+      a.addEventListener("click", function (ev) {
+        ev.preventDefault(); ev.stopPropagation(); jumpTo(g);
+      });
+      gc.appendChild(a);
+      gc.appendChild(el("span", "jumpmark", "\u2193"));
+      tr.appendChild(gc);
+
+      var bc = el("td", "bet");
+      bc.appendChild(el("span", "side " + (r.ov ? "side-o" : "side-u"),
+        r.ov ? "OVER" : "UNDER"));
+      bc.appendChild(document.createTextNode(" " + r.ln.toFixed(1) + " shots"));
+      tr.appendChild(bc);
+
+      td(tr, pct1(r.p), "num");
+      td(tr, pct1(r.b), "num zero");
+      td(tr, r.xs.toFixed(2) + " vs " + r.es.toFixed(2), "num zero");
+      td(tr, priceShown(r.be), "num");
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    w.appendChild(t);
+    box.appendChild(w);
+
+    var why = el("p", "lwhy");
+    why.appendChild(document.createTextNode(
+      "The one thing measured about this model's props is that it beats a "
+      + "player's own recent average, and the shots column is that "
+      + "disagreement: the model's expected shots against the average it is "
+      + "departing from. A recent average over-states a shooter, which is "
+      + "why most of these are unders. "));
+    if (TOPE) {
+      why.appendChild(el("b", null, TOPE.head));
+      why.appendChild(document.createTextNode(" " + TOPE.tail + " "));
+      why.appendChild(el("span", "lmuted",
+        "Measured over " + TOPE.n.toLocaleString() + " picks on "
+        + TOPE.days + " days the model had never seen; position inside the "
+        + "fifteen means nothing, so they are not numbered."));
+    }
+    box.appendChild(why);
+    return box;
+  }
+
   function valueFinder(todays) {
     var rows = valueRows(todays);
     var frag = document.createDocumentFragment();
@@ -937,7 +1013,11 @@
       host.appendChild(el("div", "empty", "No games scheduled."));
       return;
     }
-    if (!anyDone) host.appendChild(valueFinder(todays));
+    if (!anyDone) {
+      host.appendChild(valueFinder(todays));
+      var tp = topPropsBlock(state.day);
+      if (tp) host.appendChild(tp);
+    }
     var frag = document.createDocumentFragment();
     todays.forEach(function (g) {
       frag.appendChild(isLive(g) ? liveCard(g) : gameCard(g));
