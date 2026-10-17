@@ -33,6 +33,31 @@
 
   var state = { day: null, odds: false, fmt: "am", prices: {} };
 
+  // ---------- jumping from the board to a card ----------
+  // The payload carries no game id, but a date and two teams name a game
+  // uniquely, which is all an anchor needs.
+  function anchorId(g) { return "g-" + g.d + "-" + g.a + "-" + g.h; }
+
+  /** Scroll that game's card into view and mark it, so the row you clicked
+   *  and the card you land on are visibly the same game. */
+  function jumpTo(g) {
+    var card = document.getElementById(anchorId(g));
+    if (!card) return;
+    var still = false;
+    try {
+      still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (e) { /* no matchMedia */ }
+    try {
+      card.scrollIntoView({ behavior: still ? "auto" : "smooth",
+                            block: "center" });
+    } catch (e) { card.scrollIntoView(); }
+    card.classList.remove("land");
+    void card.offsetWidth;                 // restart the animation
+    card.classList.add("land");
+    clearTimeout(jumpTo.t);
+    jumpTo.t = setTimeout(function () { card.classList.remove("land"); }, 1600);
+  }
+
   // ---------- storage (per viewer; can be unavailable) ----------
   function load() {
     try {
@@ -390,6 +415,7 @@
     var fin = g.st === "FINAL" || g.st === "OFF";
     var card = el("div", "game " + (fin ? "done " + (g.hit ? "won" : "lost")
                                         : "live"));
+    card.id = anchorId(g);
     var head = el("div", "ghead");
     var mu = el("div", "matchup");
     mu.appendChild(document.createTextNode(name(g.a)));
@@ -448,6 +474,7 @@
     var done = isPast(g);
     var card = el("div", "game" + (done
       ? " done " + (g.hit ? "won" : "lost") : ""));
+    card.id = anchorId(g);
 
     // header: matchup, then either the pick or how the pick turned out
     var head = el("div", "ghead");
@@ -831,12 +858,24 @@
       .sort(function (a, b) { return b.L.edge - a.L.edge; });
     rows.forEach(function (r) {
       var rank = ranked.indexOf(r) + 1;
-      var tr = el("tr", r.L.edge > 0 ? "val" : null);
+      var tr = el("tr", (r.L.edge > 0 ? "val " : "") + "jump");
+      tr.title = "Go to " + name(r.g.a) + " at " + name(r.g.h);
+      tr.addEventListener("click", function () { jumpTo(r.g); });
       var p = el("td", "pname");
       if (rank > 0 && rank <= 3) p.appendChild(el("span", "badge", "#" + rank));
       p.appendChild(document.createTextNode(name(r.L.side)));
       tr.appendChild(p);
-      td(tr, r.g.a + " @ " + r.g.h);
+      // A real link in the Game cell, so the jump is reachable from the
+      // keyboard and not only from a click anywhere on the row.
+      var gc = el("td");
+      var a = el("a", "gl", r.g.a + " @ " + r.g.h);
+      a.href = "#" + anchorId(r.g);
+      a.addEventListener("click", function (ev) {
+        ev.preventDefault(); ev.stopPropagation(); jumpTo(r.g);
+      });
+      gc.appendChild(a);
+      gc.appendChild(el("span", "jumpmark", "\u2193"));
+      tr.appendChild(gc);
       td(tr, pct1(r.L.pm), "num");
       td(tr, pct1(r.L.pk), "num");
       td(tr, priceShown(r.L.side === r.g.h ? r.L.hml : r.L.aml), "num");
