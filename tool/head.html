@@ -56,6 +56,11 @@
   --shadow: none; --shadow-up: none;
 }
 * { box-sizing: border-box; }
+/* A class that sets `display` beats the browser's own [hidden] rule, so
+   .goalies{display:flex} was showing a hidden block -- "undefined days
+   rest" under every finished game. Served through a wrapper that supplies
+   this reset the page looked fine, which is why it survived. */
+[hidden] { display: none !important; }
 body { background: var(--bg); color: var(--fg); font-family: var(--sans);
   font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale; }

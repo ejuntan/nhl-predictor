@@ -56,6 +56,11 @@
   --shadow: none; --shadow-up: none;
 }
 * { box-sizing: border-box; }
+/* A class that sets `display` beats the browser's own [hidden] rule, so
+   .goalies{display:flex} was showing a hidden block -- "undefined days
+   rest" under every finished game. Served through a wrapper that supplies
+   this reset the page looked fine, which is why it survived. */
+[hidden] { display: none !important; }
 body { background: var(--bg); color: var(--fg); font-family: var(--sans);
   font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale; }
@@ -442,7 +447,7 @@ details.limits p b { color: var(--fg); }
   var DATA = JSON.parse(document.getElementById("nhl-data").textContent);
   var GAMES = DATA.games, PROPS = DATA.props, MK = DATA.markets;
   var PAST = DATA.past || [], PASTP = DATA.pastProps || [];
-  var RECORD = DATA.record || { w: 0, l: 0, acc: 0 };
+  var BUILT_RECORD = DATA.record || { w: 0, l: 0, acc: 0 };
   var LINES = DATA.lines || {}, BUCKETS = DATA.buckets || {};
   var SAVES = DATA.saves || [];
   var INPLAY = DATA.inplay || [];
@@ -453,6 +458,24 @@ details.limits p b { color: var(--fg); }
   // A game in progress used to appear in neither list: it is no longer
   // FUT, so it was not upcoming, and not yet FINAL, so it was not past.
   var ALL = PAST.concat(INPLAY, GAMES);
+
+  // A game that ended after the page was built sits in INPLAY carrying a
+  // hit flag, and the build's record knows nothing about it. The nightly
+  // build runs at a fixed hour and the league's late games finish after
+  // it, so without this the previous night's last games stay out of the
+  // record for a whole day. They are counted here instead. INPLAY and PAST
+  // are disjoint by construction -- the build puts a game in one or the
+  // other, never both -- so nothing is counted twice, and the next build
+  // moves these into PAST and recomputes the figure from scratch anyway.
+  function isFinished(g) { return g.st === "FINAL" || g.st === "OFF"; }
+  var LATE = INPLAY.filter(function (g) {
+    return isFinished(g) && g.hit !== undefined && g.hit !== null;
+  });
+  var RECORD = (function (base) {
+    var w = base.w + LATE.filter(function (g) { return g.hit; }).length;
+    var l = base.l + LATE.filter(function (g) { return !g.hit; }).length;
+    return { w: w, l: l, acc: (w + l) ? w / (w + l) : 0, built: base };
+  }(BUILT_RECORD));
 
   var TEAM = {
     ANA: "Anaheim", BOS: "Boston", BUF: "Buffalo", CAR: "Carolina",
@@ -644,13 +667,24 @@ details.limits p b { color: var(--fg); }
     INPLAY.forEach(function (g) {
       var e = map[g.d] || (map[g.d] = { d: g.d, n: 0, w: 0, l: 0, past: false });
       e.n += 1;
-      e.live = (e.live || 0) + 1;
+      // A finished game is a result, not a game under way: it belongs in
+      // the pill's record rather than its "under way" count.
+      if (isFinished(g) && g.hit !== undefined && g.hit !== null) {
+        if (g.hit) e.w += 1; else e.l += 1;
+      } else {
+        e.live = (e.live || 0) + 1;
+      }
+    });
+    // A day whose only results arrived after the build still reads as past.
+    Object.keys(map).forEach(function (d) {
+      var e = map[d];
+      if (!e.past && !e.live && e.w + e.l === e.n) e.past = true;
     });
     return Object.keys(map).sort().map(function (d) { return map[d]; });
   }
   function dayRecord(d) {
     var w = 0, l = 0;
-    PAST.forEach(function (g) {
+    PAST.concat(LATE).forEach(function (g) {
       if (g.d !== d) return;
       if (g.hit) w += 1; else l += 1;
     });
@@ -901,10 +935,12 @@ details.limits p b { color: var(--fg); }
     p.appendChild(el("span", "flag", g.src === "logged"
       ? "logged pre-game" : "backtest estimate"));
     if (fin) {
-      // Said plainly, because the day's record above will not match a
-      // count of the cards until the overnight rebuild.
+      // It is in the record above -- the page counts late finishers -- but
+      // the overnight rebuild has not yet checked it against the league's
+      // own record, which is worth saying on the card itself.
       p.appendChild(document.createTextNode(
-        " · final since this page was built, so not in the record below yet"));
+        " · final after this page was built, counted above pending the "
+        + "overnight rebuild"));
     }
     card.appendChild(p);
     return card;
@@ -1028,18 +1064,22 @@ details.limits p b { color: var(--fg); }
     card.appendChild(stats);
 
     // goalies, with the backup guess flagged (upcoming games only)
-    var gl = el("div", "goalies");
-    if (done) gl.hidden = true;
-    [[g.a, g.ag, g.ab, g.ar], [g.h, g.hg, g.hb, g.hr]].forEach(function (x) {
-      var d = el("div", "goalie");
-      d.appendChild(el("span", "k", x[0] + " goalie · " + x[3] +
-        (x[3] === 1 ? " day rest" : " days rest")));
-      var v = el("span", "v", x[1]);
-      if (x[2]) v.appendChild(el("span", "flag", "backup assumed"));
-      d.appendChild(v);
-      gl.appendChild(d);
-    });
-    card.appendChild(gl);
+    // A finished game carries no starter or rest in the payload, so there
+    // is nothing to build: this used to render "undefined days rest" into
+    // a hidden block on every past card.
+    if (!done) {
+      var gl = el("div", "goalies");
+      [[g.a, g.ag, g.ab, g.ar], [g.h, g.hg, g.hb, g.hr]].forEach(function (x) {
+        var d = el("div", "goalie");
+        d.appendChild(el("span", "k", x[0] + " goalie · " + x[3] +
+          (x[3] === 1 ? " day rest" : " days rest")));
+        var v = el("span", "v", x[1]);
+        if (x[2]) v.appendChild(el("span", "flag", "backup assumed"));
+        d.appendChild(v);
+        gl.appendChild(d);
+      });
+      card.appendChild(gl);
+    }
 
     // The posted line, for games not yet played. Shown whether or not the
     // calculator is on: the disagreement is the interesting number, and it
@@ -1243,19 +1283,17 @@ details.limits p b { color: var(--fg); }
     host.appendChild(document.createTextNode(
       "(" + pct(RECORD.acc) + " of " + (RECORD.w + RECORD.l) + " games)"));
 
-    // Games that finished after this page was built are shown on the day
-    // but are not in the figures above, which come from the build. Saying
-    // so is better than a day reading 6-0 above four cards marked missed.
-    var late = INPLAY.filter(function (g) {
-      return g.d === state.day && (g.st === "FINAL" || g.st === "OFF");
-    });
+    // Results that arrived after the build are in the figures above. Say
+    // which ones: they are the only numbers here the nightly rebuild has
+    // not yet checked against the league's own record.
+    var late = LATE.filter(function (g) { return g.d === state.day; });
     if (late.length) {
       var w = late.filter(function (g) { return g.hit; }).length;
       host.appendChild(el("span", "sep", "·"));
       host.appendChild(el("span", "lmuted",
-        late.length + (late.length === 1 ? " game" : " games")
-        + " finished since this page was built ("
-        + w + "-" + (late.length - w) + "), not counted above"));
+        "includes " + late.length + (late.length === 1 ? " game" : " games")
+        + " that finished after this page was built ("
+        + w + "-" + (late.length - w) + ")"));
     }
     host.hidden = false;
   }
@@ -1437,14 +1475,19 @@ details.limits p b { color: var(--fg); }
     var host = document.getElementById("slate");
     host.textContent = "";
     var todays = ALL.filter(function (g) { return g.d === state.day; });
-    var anyDone = todays.some(isPast);
-    var anyLive = todays.some(isLive);
+    // A day whose results all arrived after the build has nothing in PAST,
+    // but it is finished all the same: it must not show a value board.
+    var anyDone = todays.some(function (g) {
+      return isPast(g) || isFinished(g);
+    });
+    var running = todays.filter(function (g) {
+      return isLive(g) && !isFinished(g);
+    });
+    var anyLive = running.length > 0;
     var title = document.getElementById("dayTitle");
     title.textContent = dayLong(state.day) + " ";
     title.appendChild(el("span", "cnt",
-      anyLive ? "· " + todays.filter(function (x) {
-                  return isLive(x) && x.st !== "FINAL" && x.st !== "OFF";
-                }).length + " under way"
+      anyLive ? "· " + running.length + " under way"
               : (anyDone ? "· results" : "· predictions")));
     renderRecord(todays, anyDone);
 

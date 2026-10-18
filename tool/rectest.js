@@ -2,11 +2,18 @@ var fs = read("/tmp/payload.json");
 var D = JSON.parse(fs);
 var T = JSON.parse(read("/tmp/truth.json"));
 var PAST = D.past, RECORD = D.record;
+var INPLAY = D.inplay || [];
 
 // same functions the page uses
+function isFinished(g) { return g.st === "FINAL" || g.st === "OFF"; }
+// Games that ended after the build: the page counts these on top of the
+// build's own record, so the previous night's late games are not a day late.
+var LATE = INPLAY.filter(function (g) {
+  return isFinished(g) && g.hit !== undefined && g.hit !== null;
+});
 function dayRecord(d) {
   var w = 0, l = 0;
-  PAST.forEach(function (g) { if (g.d !== d) return; if (g.hit) w += 1; else l += 1; });
+  PAST.concat(LATE).forEach(function (g) { if (g.d !== d) return; if (g.hit) w += 1; else l += 1; });
   return { w: w, l: l, n: w + l };
 }
 function dayList() {
@@ -29,7 +36,12 @@ function ck(l, g, w) { var ok = g === w; if(!ok) all=false;
 print("-- per-day record matches the source data --");
 Object.keys(T.byday).sort().forEach(function (d) {
   var r = dayRecord(d);
-  ck(d, r.w + "-" + r.l, T.byday[d][0] + "-" + T.byday[d][1]);
+  var late = LATE.filter(function (g) { return g.d === d; });
+  // The truth file is built from finished games in the database, so a day
+  // with results that arrived after the build is expected to run ahead.
+  var lw = late.filter(function (g) { return g.hit; }).length;
+  ck(d, r.w + "-" + r.l,
+     (T.byday[d][0] + lw) + "-" + (T.byday[d][1] + late.length - lw));
 });
 print("-- season total --");
 ck("total", RECORD.w + "-" + RECORD.l, T.total[0] + "-" + T.total[1]);
@@ -64,5 +76,27 @@ var missing = PAST.filter(function (g) {
 ck("incomplete past rows", missing, 0);
 var totmismatch = PAST.filter(function (g) { return g.hsc + g.asc !== g.atot; }).length;
 ck("rows where goals do not sum to the total", totmismatch, 0);
+
+print("-- games under way are never also in the past list --");
+// This is what makes counting the late finishers safe: if the build could
+// put one game in both lists, every such game would be counted twice.
+var pkey = {};
+PAST.forEach(function (g) { pkey[g.d + "|" + g.a + g.h] = 1; });
+ck("in-play games also listed as past",
+   INPLAY.filter(function (g) { return pkey[g.d + "|" + g.a + g.h]; }).length, 0);
+
+print("-- every finished in-play game carries a usable result --");
+var lbad = 0;
+INPLAY.forEach(function (g) {
+  if (!isFinished(g)) return;
+  if (g.hit === undefined || g.hit === null) { lbad += 1; return; }
+  // a tie would make the hit flag meaningless; hockey has no ties
+  if (g.hsc === g.asc) { lbad += 1; return; }
+  var want = (g.ph > 0.5) === (g.hsc > g.asc) ? 1 : 0;
+  if (g.hit !== want) lbad += 1;
+});
+ck("finished in-play rows with a wrong or missing result", lbad, 0);
+ck("late finishers counted", LATE.length,
+   INPLAY.filter(isFinished).length);
 
 print(all ? "\nALL RECORD CHECKS PASS" : "\nFAILURES PRESENT");
