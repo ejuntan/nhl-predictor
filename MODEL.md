@@ -154,8 +154,11 @@ clean holdout.
 
 **Beating the line 2/10.** Log loss ~0.68 against a market near 0.66. When
 the market is sharper than you, betting into the close is negative
-expectation before the ~4% hold. The two points are for narrow spots —
-back-to-backs, unproven goalies — on small samples.
+expectation before the ~4% hold. The two points were for narrow spots —
+back-to-backs, unproven goalies — on small samples; **the back-to-back half
+of that has since been tested and does not survive** (section 22). One unit
+on the model's side in games where either team was on a back-to-back
+returned −5.0% over 384 games, interval −13.5% to +3.4%.
 
 ---
 
@@ -1370,3 +1373,84 @@ Guarded by `tool/proptest.py`, which re-derives every break-even, checks the
 side against the direction of the disagreement and against expected shots,
 and fails if a pick's probability or expected shots disagree with the props
 payload it came from.
+
+## 22. Does a back-to-back move the result? (measured 2026-10-19)
+
+Three questions that a single "yes" would blur: whether the second night of
+a back-to-back costs a team games, whether this model prices that correctly,
+and whether the long-standing claim that back-to-backs are a spot where it
+beats the market holds up. `rest_eval.py`.
+
+### The effect is real, and it is the road team's problem
+
+| | n | win rate | 95% |
+|---|---|---|---|
+| away on a back-to-back | 1,099 | **40.6%** | 37.7–43.5% |
+| away rested | 4,629 | 47.8% | 46.3–49.2% |
+| home on a back-to-back | 534 | 51.3% | 47.1–55.5% |
+| home rested | 5,194 | 53.9% | 52.5–55.2% |
+
+The road effect is about **7 points** across all seasons and **9.9 points**
+on the clean holdout alone (39.7% against 49.6%), with intervals that do not
+meet. The home effect is not established: the all-seasons intervals overlap,
+and on the holdout it reverses — home teams on a back-to-back went 55.6%
+against 51.9% for rested ones.
+
+A plausible mechanism is in the travel column. A home back-to-back is often
+two straight home dates: median 306 km travelled, and **40% travelled none
+at all**. A road back-to-back always involves a trip: median 532 km, and
+**0%** travelled none.
+
+### The model already carries it — and applies it symmetrically
+
+Flipping one flag on 1,530 holdout games, everything else held:
+
+| counterfactual | home win probability |
+|---|---|
+| away team put on a back-to-back | 52.5% → 59.2% (**+6.7**) |
+| home team put on a back-to-back | 55.6% → 49.5% (**−6.1**) |
+
+So the model docks either side about six points. The data says the penalty
+belongs almost entirely to the road team, and calibration inside the
+holdout points the same way:
+
+| situation | n | model says | actual | error |
+|---|---|---|---|---|
+| only the away side tired | 221 | 59.7% | 61.1% | +1.3% |
+| only the home side tired | 93 | 47.2% | 53.8% | **+6.6%** |
+| both tired | 76 | 52.8% | 57.9% | +5.1% |
+| neither tired | 1,058 | 53.9% | 50.4% | −3.5% |
+
+The away-side number is nearly exact. The home-side penalty looks like the
+mis-specified piece — the model takes six points off a home team for a
+back-to-back and the data does not support taking any. At n=93 the interval
+is wide enough to contain the model's number, so this is a lead, not a
+finding. It is the clearest single lead the schedule features have produced.
+
+### Against the market it is not a spot
+
+The claim in section 7 was that back-to-backs are where this model beats the
+line. Paired bootstrap, 4,000 resamples over games, against real posted
+prices (negative log-loss difference = model better):
+
+| situation | n | model − market log loss | flat ROI |
+|---|---|---|---|
+| either side tired | 384 | −0.0047 [−0.0167, +0.0076] | −5.0% [−13.5%, +3.4%] |
+| only the away side tired | 217 | −0.0036 [−0.0204, +0.0128] | +2.2% [−9.0%, +12.9%] |
+| neither tired | 1,030 | +0.0054 [−0.0014, +0.0122] | −8.2% [−13.6%, −3.0%] |
+| every holdout game | 1,414 | +0.0027 [−0.0030, +0.0086] | −7.3% [−11.9%, −2.9%] |
+
+The direction is favourable in every tired slice and the sign flips when
+nobody is tired, which is why the lead looked good. But every interval in
+the tired rows crosses zero. The only established figures on the table are
+the losses: −8.2% when neither side is tired and −7.3% overall. The slice
+was chosen after seeing the holdout, and it does not survive being tested
+properly. Section 7 is corrected accordingly.
+
+### What was not done
+
+The model was not retuned. The home-back-to-back over-correction is a
+post-hoc slice on 93 games; acting on it would be exactly the mistake the
+rest of this document is built to avoid. The way to test it is a trailing
+window correction fitted causally, like the ones in sections 14 and 17, and
+that has not been run.
