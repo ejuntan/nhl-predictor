@@ -33,7 +33,7 @@ STATIC = os.path.join(ROOT, "out", "tool_data.json")
 # A game's score changes minute to minute; a moneyline drifts over hours.
 # One shared timer would mean either stale scores or three times the odds
 # calls for nothing.
-SCORE_TTL = int(os.environ.get("NHL_SCORE_TTL", "300"))     # 5 minutes
+SCORE_TTL = int(os.environ.get("NHL_SCORE_TTL", "60"))      # 1 minute
 ODDS_TTL = int(os.environ.get("NHL_ODDS_TTL", "900"))       # 15 minutes
 SCORE = "https://api-web.nhle.com/v1/score/{}"
 SB = "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard?dates={}"
@@ -227,7 +227,7 @@ def refresh_scores(p):
     return moved + len(promoted)
 
 
-def payload(force=False):
+def payload(force=False, force_scores=False):
     """The build's payload, with scores and prices refreshed on their own
     clocks.
 
@@ -246,7 +246,13 @@ def payload(force=False):
     with _lock:
         p = _s["payload"]
         stale_build = p is None or mtime != _s["built"]
-        need_scores = stale_build or force or now - _s["scores_at"] >= SCORE_TTL
+        # Scores can be forced on their own. They cost one call per date
+        # and finish in about a second; the odds cost a lookup per game and
+        # take half a minute, which is no use to someone who just pressed
+        # reload -- and pointless besides, since a moneyline does not move
+        # in the seconds between two page views.
+        need_scores = (stale_build or force or force_scores
+                       or now - _s["scores_at"] >= SCORE_TTL)
         need_odds = stale_build or force or now - _s["odds_at"] >= ODDS_TTL
         if not (need_scores or need_odds):
             return p

@@ -19,13 +19,19 @@ because the ratings behind them only move when games finish.
   /          the page, with the freshest prices available
   /data.json the payload behind it
   /healthz   what is live, what shipped with the build, and how old each is
+
+Both the page and the payload are sent with `no-cache` and an ETag, so a
+reload always asks the server and gets whatever is current -- costing a
+304 and no transfer when nothing has moved. Add `?refresh=1` to skip the
+score timer for that request, or `?refresh=all` to refetch the prices too,
+which takes about half a minute.
 """
 import json
 import os
 import re
 from datetime import datetime, timezone
 
-from flask import Flask, Response, jsonify, send_file
+from flask import Flask, Response, jsonify, request, send_file
 
 import liveserve
 
@@ -43,10 +49,19 @@ def _payload():
 
 @app.after_request
 def headers(r):
-    # The page is rebuilt once a day, so a short cache is right: long enough
-    # to absorb a reload, short enough that the morning refresh shows up.
-    if r.status_code == 200 and r.mimetype in ("text/html", "application/json"):
-        r.headers["Cache-Control"] = "public, max-age=600"
+    # This page exists to show what is happening now, so a reload has to
+    # reach the server. It used to say max-age=600 with no validator, which
+    # let a browser answer a reload out of its own cache for ten minutes
+    # without asking -- on top of the server's own score timer, so a reload
+    # could show numbers a quarter of an hour old.
+    #
+    # `no-cache` does not mean "do not store": it means revalidate before
+    # reusing. Paired with the ETag set on each route, an unchanged page
+    # comes back as a 304 and costs nothing to transfer, while a changed
+    # one is always delivered.
+    if r.status_code in (200, 304) and r.mimetype in (
+            "text/html", "application/json", None):
+        r.headers["Cache-Control"] = "no-cache, must-revalidate"
     return r
 
 
@@ -58,6 +73,21 @@ DATA_BLOCK = re.compile(
     re.S)
 
 
+def _force():
+    """What `?refresh=` asks for, as keyword arguments for the refresher.
+
+    The timers exist so a burst of reloads does not become a burst of calls
+    to someone else's API. `?refresh=1` steps past the score timer only --
+    one call per date, about a second. `?refresh=all` also refetches the
+    prices, which costs a lookup per game and takes half a minute, so it is
+    not what a reload should do.
+    """
+    v = request.args.get("refresh")
+    if v == "all":
+        return {"force": True}
+    return {"force_scores": v in ("1", "true", "yes")}
+
+
 @app.route("/")
 def index():
     if not os.path.exists(PAGE):
@@ -67,21 +97,27 @@ def index():
             status=503, mimetype="text/plain")
     with open(PAGE) as f:
         html = f.read()
-    p = liveserve.payload()
+    p = liveserve.payload(**_force())
     if p is not None:
         js = json.dumps(p, separators=(",", ":")).replace("</", "<\\/")
         html = DATA_BLOCK.sub(
             lambda m: m.group(1) + js + m.group(3), html, count=1)
-    return Response(html, mimetype="text/html")
+    r = Response(html, mimetype="text/html")
+    # The tag is over the finished page, data and all, so it changes exactly
+    # when something a reader would see changes.
+    r.add_etag()
+    return r.make_conditional(request)
 
 
 @app.route("/data.json")
 def data():
-    p = liveserve.payload()
+    p = liveserve.payload(**_force())
     if p is None:
         return jsonify({"error": "no payload built"}), 503
-    return Response(json.dumps(p, separators=(",", ":")),
-                    mimetype="application/json")
+    r = Response(json.dumps(p, separators=(",", ":")),
+                 mimetype="application/json")
+    r.add_etag()
+    return r.make_conditional(request)
 
 
 @app.route("/healthz")

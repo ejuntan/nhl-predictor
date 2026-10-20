@@ -20,7 +20,11 @@ services:
       # Scores move minute to minute, prices drift over hours, so they are
       # refreshed on separate clocks. Both are lazy: the first request after
       # the interval pays for the refresh and the rest are served the cache.
+      # The score interval is a floor on how often the league's API is
+      # called, not a cache the reader is stuck behind: the page itself is
+      # sent with no-cache and an ETag, so every reload reaches the server,
+      # and ?refresh=1 skips the floor entirely.
       - key: NHL_SCORE_TTL
-        value: "300"
+        value: "60"
       - key: NHL_ODDS_TTL
         value: "900"
