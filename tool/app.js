@@ -502,6 +502,43 @@
     return card;
   }
 
+  /** When the pick and the expected score point at different teams.
+   *
+   *  The win probability is regulation plus overtime: the side behind on
+   *  expected goals can still come out ahead if the model likes it in
+   *  overtime. That is worth explaining rather than leaving as an apparent
+   *  contradiction -- and worth a warning, because the overtime winner is
+   *  the weakest component here: on 357 holdout overtimes it picked the
+   *  winner 49.6% of the time and scored 4.7% WORSE than simply quoting
+   *  the league rate, an interval that stays below zero. So a game decided
+   *  by that component is a toss-up whatever the number says.
+   */
+  function overtimeNote(g) {
+    if (g.prh === undefined || g.pra === undefined) return null;
+    var pickHome = g.ph > 0.5;
+    if (pickHome === (g.lh > g.la)) return null;     // they agree; nothing to say
+    var regHome = g.prh > g.pra;
+    var regName = name(regHome ? g.h : g.a);
+    var pickName = name(pickHome ? g.h : g.a);
+    var d = el("div", "note note-info");
+    d.appendChild(el("span", "ic", "!"));
+    var t = el("div");
+    t.appendChild(document.createTextNode("Inside regulation "));
+    t.appendChild(el("b", null, regName));
+    t.appendChild(document.createTextNode(
+      " is the likelier winner, " + pct1(Math.max(g.prh, g.pra)) + " to "
+      + pct1(Math.min(g.prh, g.pra)) + ", which is what the expected score "
+      + "above shows. "));
+    t.appendChild(el("b", null, pickName));
+    t.appendChild(document.createTextNode(
+      " comes out ahead overall only because " + pct(g.ot) + " of games "
+      + "reach overtime and the model favours them there. It predicts the "
+      + "overtime winner worse than a coin flip \u2014 49.6% on 357 measured "
+      + "overtimes \u2014 so read this game as a toss-up."));
+    d.appendChild(t);
+    return d;
+  }
+
   function gameCard(g) {
     var done = isPast(g);
     var card = el("div", "game" + (done
@@ -613,11 +650,19 @@
       // on a card implies it says something about this game, and those two
       // do not. The finished-game panels below still show what was
       // predicted against what happened, because that is the record.
-      stat("Expected score", g.la.toFixed(1) + " – " + g.lh.toFixed(1),
-           g.a + " – " + g.h);
+      // Labelled regulation because that is what it is: the two Poisson
+      // rates are fitted on regulation goals. The win probability beside
+      // it also contains overtime, which is how a side can be favoured
+      // while the expected score goes the other way.
+      stat("Expected score, regulation",
+           g.la.toFixed(1) + " – " + g.lh.toFixed(1), g.a + " – " + g.h);
       stat("Win by 2+", pct(g.pl), name(g.h));
     }
     card.appendChild(stats);
+    if (!done) {
+      var ot = overtimeNote(g);
+      if (ot) card.appendChild(ot);
+    }
 
     // goalies, with the backup guess flagged (upcoming games only)
     // A finished game carries no starter or rest in the payload, so there

@@ -69,5 +69,33 @@ ck("value-pick interval straddles zero", vp["lo"] < 0 < vp["hi"], True)
 ck("value-pick n is the sum of the buckets' value picks",
    vp["n"], sum(v["vp_n"] for v in buckets.values()))
 
+
+# ---------------------------------------------------------------------------
+# The regulation split, which the card uses to explain a pick that points the
+# other way from the expected score. A sign error here would make the page
+# name the wrong team as the regulation favourite.
+print("\n-- the regulation split --")
+games = d["games"]
+miss = [g for g in games if "prh" not in g or "pra" not in g]
+ck("upcoming games without a regulation split", len(miss), 0)
+bad_sum = bad_band = bad_dir = 0
+for g in games:
+    if "prh" not in g:
+        continue
+    # regulation home win + tie + regulation away win is the whole sample
+    if abs(g["prh"] + g["pra"] + g["ot"] - 1.0) > 2e-3:
+        bad_sum += 1
+    # the overall win probability is regulation plus a share of the ties,
+    # so it has to sit between the two
+    if not (g["prh"] - 1e-6 <= g["ph"] <= g["prh"] + g["ot"] + 1e-6):
+        bad_band += 1
+    # the regulation favourite must be the side with the higher rate
+    if (g["prh"] > g["pra"]) != (g["lh"] > g["la"]):
+        bad_dir += 1
+ck("rows where regulation + tie does not sum to one", bad_sum, 0)
+ck("rows where the win probability is outside its own band", bad_band, 0)
+ck("rows where the regulation favourite contradicts the expected score",
+   bad_dir, 0)
+
 print("\nALL LINE CHECKS PASS" if ok else "\nFAILURES PRESENT")
 sys.exit(0 if ok else 1)

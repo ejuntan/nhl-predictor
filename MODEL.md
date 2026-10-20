@@ -1454,3 +1454,81 @@ post-hoc slice on 93 games; acting on it would be exactly the mistake the
 rest of this document is built to avoid. The way to test it is a trailing
 window correction fitted causally, like the ones in sections 14 and 17, and
 that has not been run.
+
+## 23. How a team can be favoured while the expected score says otherwise (2026-10-19)
+
+Noticed on a card: Tampa Bay at Vegas, 20 October. The model picked Tampa at
+50.6% and showed an expected score of 2.9–3.0 against them. Both numbers are
+correct and they are not measuring the same thing.
+
+A win probability here is regulation plus overtime:
+
+```
+p_home = p_reg_home + p_reg_tie * p_ot_home
+```
+
+The expected score is `lam_h` / `lam_a`, and those two Poisson rates are
+fitted on **regulation** goals. For that game:
+
+| | |
+|---|---|
+| Vegas wins in regulation | 40.9% |
+| regulation tie | 21.3% |
+| Tampa wins in regulation | 37.8% |
+| Vegas wins the overtime | 39.9% |
+
+0.409 + 0.213 × 0.399 = **0.494**, so Tampa at 50.6%. Vegas is the likelier
+winner inside regulation, exactly as the expected score implies; Tampa gets
+in front only through the 21.3% of games that reach overtime. It happens on
+**8.9% of holdout games**, and those games are near coin flips — the model
+picked 51.6% of them right against 54.9% when the two agree.
+
+### The component doing the flipping does not work
+
+`p_ot_home` is a separate logistic fitted on the games that actually went to
+overtime. Section 18 measured `p_ot`, the chance a game *reaches* overtime.
+This is the other one — who wins once it is there — and it had never been
+tested. `ot_eval.py`, on 357 holdout overtimes:
+
+| | |
+|---|---|
+| home actually won | 50.7% |
+| model said, on average | 53.7% |
+| accuracy | **49.6%** |
+| Brier skill vs the base rate | **−4.73%**, 95% [−9.60%, −0.52%] |
+
+Worse than a coin flip, with an interval entirely below zero. And it is not
+a timid component: `p_ot_home` runs from 0.17 to 0.83, with a 5–95% range of
+0.36 to 0.72. It makes large, confident calls that are worse than saying
+nothing.
+
+### Replacing it is not an established improvement
+
+Swapping it for the training seasons' own rate (0.545 — nothing fitted on
+the holdout):
+
+| | log loss | Brier | accuracy |
+|---|---|---|---|
+| as shipped | 0.68140 | 0.24430 | 54.89% |
+| constant instead | 0.67973 | 0.24348 | 54.61% |
+
+Better on both probability scores, worse on accuracy, and the paired
+bootstrap on log loss gives **−0.00167 [−0.00452, +0.00119]** — crossing
+zero. The pick changes on 130 games; the shipped version was right on 51.5%
+of them and the constant on 48.5%. Overtime decides too few games for a
+broken component to show up clearly in the total.
+
+So the finding is split, and both halves are worth keeping in mind: the
+overtime-winner model is established to be worse than a constant, and
+removing it is not established to help. Nothing was changed in the model.
+
+### What was changed
+
+The page. The stat is now labelled **"Expected score, regulation"**, because
+that is what it is, and a card whose pick disagrees with its own expected
+score now carries a note naming the regulation favourite, giving the
+regulation split, and saying plainly that the overtime call behind the flip
+is made worse than a coin flip — so the game reads as a toss-up. The
+regulation split (`prh`, `pra`) is exported for this, and `tool/linetest.py`
+checks it sums with the tie to one, brackets the win probability, and never
+contradicts the expected score.

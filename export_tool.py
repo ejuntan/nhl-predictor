@@ -377,6 +377,11 @@ def main():
             "o55": round(float(r.p_over_55), 4),
             "o65": round(float(r.p_over_65), 4),
             "pl": round(float(r.p_home_m15), 4),
+            # The regulation split, so a card can say why a side can be
+            # favoured overall while the expected score goes the other way:
+            # the expected score is regulation, the win probability is not.
+            "prh": round(float(r.p_reg_home), 4),
+            "pra": round(float(r.p_reg_away), 4),
             "hg": nm.get(str(int(r.h_goalie)), "TBD") if pd.notna(r.h_goalie) else "TBD",
             "ag": nm.get(str(int(r.a_goalie)), "TBD") if pd.notna(r.a_goalie) else "TBD",
             "hb": int(str(r.h_goalie_label).startswith("backup")),
