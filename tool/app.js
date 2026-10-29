@@ -1072,6 +1072,34 @@
     return frag;
   }
 
+  /** Say so when the nightly build has stopped running.
+   *
+   *  Scores and prices keep refreshing on the server, so a stalled site
+   *  looks alive while every prediction, probability and record on it is
+   *  frozen at the last successful build. That is the worst failure this
+   *  page can have: wrong without looking wrong. It went unnoticed for six
+   *  days once, when a test failure stopped the publish.
+   */
+  function stalenessNote() {
+    if (!DATA.generated) return null;
+    var built = new Date(DATA.generated + "T12:00:00Z");
+    if (isNaN(built)) return null;
+    var days = Math.floor((Date.now() - built.getTime()) / 86400000);
+    if (days < 2) return null;                  // a day behind is normal
+    var d = el("div", "note note-bad");
+    d.appendChild(el("span", "ic", "!"));
+    var t = el("div");
+    t.appendChild(el("b", null, "This page is " + days + " days old."));
+    t.appendChild(document.createTextNode(
+      " It was built on " + dayLong(DATA.generated) + " and the nightly "
+      + "refresh has not run since. Scores and posted prices below are "
+      + "still live, but every prediction, probability and record comes "
+      + "from that build \u2014 so the upcoming games may already have been "
+      + "played, and the record does not include them."));
+    d.appendChild(t);
+    return d;
+  }
+
   function renderSlate() {
     var host = document.getElementById("slate");
     host.textContent = "";
@@ -1091,6 +1119,8 @@
       anyLive ? "· " + running.length + " under way"
               : (anyDone ? "· results" : "· predictions")));
     renderRecord(todays, anyDone);
+    var stale = stalenessNote();
+    if (stale) host.appendChild(stale);
 
     if (!todays.length) {
       host.appendChild(el("div", "empty", "No games scheduled."));

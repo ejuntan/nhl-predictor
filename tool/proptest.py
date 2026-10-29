@@ -29,9 +29,13 @@ d = json.load(open("out/tool_data.json"))
 tops = d.get("topProps", {})
 ev = d.get("topPropsEvidence", {})
 games = {g["d"] + "|" + g["a"] + g["h"] for g in d["games"]}
+# Keyed by player id, not by name. Two players can share a name on the same
+# slate -- Vancouver dress two Elias Petterssons -- and keying on the name
+# merged them, so a correct shortlist row was compared against the other
+# man's numbers and this suite failed for days.
 props = {}
 for r in d["props"]:
-    props[(r["d"], r["n"])] = r
+    props[(r["d"], r["pid"])] = r
 
 print(f"-- prop shortlist: {len(tops)} days --")
 ck("there is a shortlist at all", len(tops) > 0, True)
@@ -44,8 +48,8 @@ for day, picks in sorted(tops.items()):
     for r in picks:
         who = r["n"]
         # one line per player: three unders on one man is one bet thrice
-        ck(tag + who + " appears once", who in seen, False)
-        seen.add(who)
+        ck(tag + who + " appears once", r["pid"] in seen, False)
+        seen.add(r["pid"])
         # the floor the holdout required
         ck(tag + who + " clears the 55% floor", r["p"] >= FLOOR, True)
         # the price shown must be the price that probability needs
@@ -62,7 +66,7 @@ for day, picks in sorted(tops.items()):
         ck(tag + who + " game is on the slate",
            day + "|" + away + home in games, True)
         # and the player has to be in that day's prop table
-        src = props.get((day, who))
+        src = props.get((day, r["pid"]))
         ck(tag + who + " is in the props payload", src is not None, True)
         if src is not None:
             ck(tag + who + " expected shots agree", r["xs"], src["xs"])

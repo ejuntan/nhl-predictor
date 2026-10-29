@@ -131,7 +131,8 @@ def top_props(p):
             # page shows him gets the same answer.
             pr = round(float(r.p), 4)
             picks.append({
-                "n": r.n, "t": r.t, "o": r.o, "hm": int(r.hm),
+                "n": r.n, "pid": int(r.pid), "t": r.t, "o": r.o,
+                "hm": int(r.hm),
                 "ln": float(r.ln), "ov": int(r.over),
                 "p": pr, "b": round(float(r.b), 4),
                 "xs": round(float(r.xs), 2), "es": round(float(r.es), 2),
@@ -396,7 +397,8 @@ def main():
     plist = []
     for r in p.sort_values(["date", "exp_sog"], ascending=[True, False]).itertuples(index=False):
         plist.append({
-            "d": r.date, "n": r.player, "t": r.team, "o": r.opp,
+            "d": r.date, "n": r.player, "pid": int(r.player_id),
+            "t": r.team, "o": r.opp,
             "hm": int(r.is_home),
             "toi": round(float(r.exp_toi_min), 1),
             "xs": round(float(r.exp_sog), 2),
