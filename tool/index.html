@@ -2,7 +2,7 @@
 <title>NHL Daily Predictions</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Encode+Sans+Semi+Condensed:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
 <style>
 /* A slate is a departure board.
    Fixed columns that never move, rows ranked by edge, and a price that has
@@ -11,10 +11,8 @@
    sign was before it was a screen, whatever the page's theme around it.
    Division is a hairline seam, never a card shadow.
 
-   Type comes from the same place: Encode Sans Semi Condensed for the board
-   rows and display, the weight and width of signage; Hanken Grotesk for
-   prose; Courier Prime, uppercase and letterspaced, for every column label
-   and code, because the pass half of this world was a typed document.
+   Barlow Condensed for board rows and display, Barlow for prose, Azeret
+   Mono uppercase for every column label, status word and code.
 
    One saturated colour, vermilion, and it carries the negative: the miss,
    the losing edge, the situation measured to lose. On a page whose honest
@@ -38,9 +36,9 @@
   --good: #1d6b4f; --good-soft: #e2efe8;
   --bad: #a93718; --bad-soft: #fae7df;
   --board-good: #63b894; --board-bad: #f2765a;
-  --cond: "Encode Sans Semi Condensed", "Arial Narrow", sans-serif;
-  --sans: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "Courier Prime", ui-monospace, "Courier New", monospace;
+  --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --sans: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Azeret Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --r: 2px;
 }
 @media (prefers-color-scheme: dark) {
@@ -89,8 +87,8 @@ input { caret-color: var(--alert); }
 /* mono labels: the board's own voice */
 .lbl, .stat .k, .goalie .k, .ptable thead th, .prices h4, .lf .k, .day .dw,
 .top .stamp, .striphead .lmuted, .badge, .chip, .side, .flag, .score .ot {
-  font-family: var(--mono); font-weight: 700; text-transform: uppercase;
-  letter-spacing: .07em; font-size: 10.5px; }
+  font-family: var(--mono); font-weight: 500; text-transform: uppercase;
+  letter-spacing: .1em; font-size: 9.5px; }
 .num, .ptable .num, .stat .v, .record .big, .lf, .vs, .score, .day .dd {
   font-variant-numeric: tabular-nums lining-nums; }
 
@@ -191,14 +189,14 @@ input { caret-color: var(--alert); }
 .strip .zero { color: var(--board-mut); }
 .strip .badge { margin-right: 7px; background: var(--board-fg);
   color: var(--board); }
-.strip td.status { font-family: var(--mono); font-weight: 700; font-size: 10.5px;
-  text-transform: uppercase; letter-spacing: .07em; }
+.strip td.status { font-family: var(--mono); font-weight: 600; font-size: 9.5px;
+  text-transform: uppercase; letter-spacing: .1em; }
 .strip td.status.st-bad { color: var(--board-bad); }
 .strip td.status.st-none { color: var(--board-faint); }
 .strip td.status.st-open { color: var(--board-fg); }
 /* the same verdict, carried under the pick where there is no column for it */
-.st-inline { display: none; font-family: var(--mono); font-weight: 700;
-  font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em;
+.st-inline { display: none; font-family: var(--mono); font-weight: 600;
+  font-size: 9px; text-transform: uppercase; letter-spacing: .08em;
   margin-top: 2px; }
 .st-inline.st-bad { color: var(--board-bad); }
 .st-inline.st-none { color: var(--board-faint); }

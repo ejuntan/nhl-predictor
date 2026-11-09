@@ -29,10 +29,10 @@ panel on a dark page too. One saturated colour, vermilion #E8502A, and it
 carries the negative only: the miss, the losing edge, the situation measured
 to lose. The lamp is cream at full brightness instead, the loudest thing
 available on enamel and colliding with nothing. Division is hairline seam,
-never card shadow; no rounded-box stack. Encode Sans Semi Condensed for
-board rows and display, Hanken Grotesk for prose, Courier Prime uppercase
-and letterspaced for every column label and code, because the pass half of
-this world was a typed document. Figures are tabular in fixed cells.
+never card shadow; no rounded-box stack. Barlow Condensed for board rows
+and display, Barlow for prose, Azeret Mono uppercase and letterspaced for
+every column label, status word and code. Figures are tabular in fixed
+cells.
 
 STORY: The visitor sees a ranked board, reads down the edge column, finds the
 rows whose price moved, and lands on a game card that tells them what the
