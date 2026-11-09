@@ -1,14 +1,15 @@
-<div class="wrap">
-  <div class="masthead">
-    <div class="top">
-      <h1>NHL Daily Predictions</h1>
-      <span class="asof" id="asof">—</span>
-    </div>
-    <p class="intro">Pick a day. Finished days show what was predicted against
-      what happened. Upcoming days show who the model favours, the price the
-      book is posting, and what that situation has actually returned. Any row
-      on the board jumps to that game's card.</p>
+<div class="masthead">
+  <div class="top">
+    <h1>NHL Daily Predictions</h1>
+    <span class="stamp" id="asof">—</span>
+    <span class="seasonrec"><span>Season</span><b id="seasonrec">—</b><span id="seasonpct"></span></span>
   </div>
+</div>
+<div class="wrap">
+  <p class="intro">A slate ranked by where the model disagrees with the posted
+    price. Rows carry what that exact situation has actually returned, and a
+    price that has moved since you last looked keeps its lamp until you have
+    seen it. Any row goes to its game.</p>
 
   <div class="days" id="days" role="group" aria-label="Choose a day"></div>
 

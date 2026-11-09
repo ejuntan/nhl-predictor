@@ -1,0 +1,10 @@
+# Runtime scratch from the impeccable skill: decision pages, captures,
+# generated mocks and the hook's cache. The durable records -- PRODUCT.md,
+# DESIGN.md and surfaces/ -- are committed.
+questions/
+mocks/
+review/
+decision-sketches/
+decision-payload.json
+hook.cache.json
+config.local.json

@@ -167,6 +167,85 @@
   }
 
   // ---------- small DOM helpers ----------
+  // Drawn icons, one library, one stroke weight. Glyphs borrowed from the
+  // text font are not an icon system.
+  var SVGNS = "http://www.w3.org/2000/svg";
+  var ICONS = {
+    caret: "M6 3.5L10.5 8 6 12.5",
+    jump: "M8 3v8M4.5 7.5L8 11l3.5-3.5",
+    alert: "M8 2.6l5.9 10.8H2.1L8 2.6zM8 6.6v3.1M8 11.4v.1"
+  };
+  function icon(name, cls) {
+    var s = document.createElementNS(SVGNS, "svg");
+    s.setAttribute("viewBox", "0 0 16 16");
+    s.setAttribute("width", "13");
+    s.setAttribute("height", "13");
+    s.setAttribute("fill", "none");
+    s.setAttribute("stroke", "currentColor");
+    s.setAttribute("stroke-width", "1.75");
+    s.setAttribute("stroke-linecap", "round");
+    s.setAttribute("stroke-linejoin", "round");
+    s.setAttribute("aria-hidden", "true");
+    if (cls) s.setAttribute("class", cls);
+    var d = document.createElementNS(SVGNS, "path");
+    d.setAttribute("d", ICONS[name]);
+    s.appendChild(d);
+    return s;
+  }
+
+  // ---------- the lamp ----------
+  // A price that has moved since THIS viewer last looked keeps its lamp
+  // until they have seen it. The comparison is per viewer and lives in
+  // their own storage, so the lamp means "changed since you looked", not
+  // "changed since the build" -- which is the only version worth lighting.
+  var SEEN = {};
+  try {
+    SEEN = JSON.parse(localStorage.getItem("nhl-seen-prices") || "{}") || {};
+  } catch (e) { SEEN = {}; }
+  function priceOf(L) { return String(L.hml) + "/" + String(L.aml); }
+  function movedSince(key, L) {
+    var was = SEEN[key];
+    return was !== undefined && was !== priceOf(L) ? was : null;
+  }
+  function rememberPrices() {
+    var next = {};
+    Object.keys(LINES).forEach(function (k) { next[k] = priceOf(LINES[k]); });
+    try {
+      localStorage.setItem("nhl-seen-prices", JSON.stringify(next));
+    } catch (e) { /* private window or blocked storage */ }
+  }
+
+  /** Rows keep their identity when the ranking changes: each one travels
+   *  from where it was to where it now belongs instead of the table
+   *  blinking into a new order. This is the page's one authored motion. */
+  function boardPositions() {
+    var m = {};
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".strip tbody tr[data-row]"),
+      function (tr) { m[tr.dataset.row] = tr.getBoundingClientRect().top; });
+    return m;
+  }
+  function flipBoard(prev) {
+    if (!prev) return;
+    try {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    } catch (e) { /* no matchMedia */ }
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".strip tbody tr[data-row]"),
+      function (tr) {
+        var was = prev[tr.dataset.row];
+        if (was === undefined) return;
+        var d = was - tr.getBoundingClientRect().top;
+        if (!d) return;
+        tr.classList.add("flip");
+        tr.style.transform = "translateY(" + d + "px)";
+        requestAnimationFrame(function () {
+          tr.classList.remove("flip");
+          tr.style.transform = "";
+        });
+      });
+  }
+
   function el(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -300,8 +379,15 @@
     });
     // Bring the chosen day into view without scrolling the page itself.
     if (selected) {
-      host.scrollLeft = Math.max(0, selected.offsetLeft - host.clientWidth / 2
-        + selected.offsetWidth / 2);
+      // Let the browser do this after layout: the arithmetic version ran
+      // before the webfont settled and left the selected cell half off the
+      // left edge of its own strip.
+      try {
+        selected.scrollIntoView({ block: "nearest", inline: "center" });
+      } catch (e) {
+        host.scrollLeft = Math.max(0, selected.offsetLeft
+          - host.clientWidth / 2 + selected.offsetWidth / 2);
+      }
     }
   }
 
@@ -317,9 +403,11 @@
     var rows = savesFor(g);
     if (!rows.length) return null;
     var d = el("details", "props");
-    d.appendChild(el("summary", null,
-      "Goalie saves — " + rows.length +
-      (rows.length === 1 ? " starter" : " starters")));
+    var gsum = el("summary");
+    gsum.appendChild(icon("caret", "caret"));
+    gsum.appendChild(document.createTextNode("Goalie saves — "
+      + rows.length + (rows.length === 1 ? " starter" : " starters")));
+    d.appendChild(gsum);
     var w = el("div", "pwrap");
     var t = el("table", "ptable");
     var th = el("thead"), htr = el("tr");
@@ -521,7 +609,7 @@
     var regName = name(regHome ? g.h : g.a);
     var pickName = name(pickHome ? g.h : g.a);
     var d = el("div", "note note-info");
-    d.appendChild(el("span", "ic", "!"));
+    d.appendChild(el("span", "ic")).appendChild(icon("alert"));
     var t = el("div");
     t.appendChild(document.createTextNode("Inside regulation "));
     t.appendChild(el("b", null, regName));
@@ -723,9 +811,11 @@
     var ps = propsFor(g);
     if (ps.length) {
       var det = el("details", "props");
-      var sum = el("summary", null, done
+      var sum = el("summary");
+      sum.appendChild(icon("caret", "caret"));
+      sum.appendChild(document.createTextNode(done
         ? "Shots on goal — predicted vs actual for " + ps.length + " skaters"
-        : "Shots on goal — " + ps.length + " skaters");
+        : "Shots on goal — " + ps.length + " skaters"));
       det.appendChild(sum);
       var w2 = el("div", "pwrap");
       var t2 = el("table", "ptable");
@@ -877,12 +967,6 @@
       host.appendChild(document.createTextNode(
         todays.length === 1 ? "game to come" : "games to come"));
     }
-    host.appendChild(el("span", "sep", "·"));
-    host.appendChild(document.createTextNode("season so far "));
-    host.appendChild(el("span", "big",
-      RECORD.w + "-" + RECORD.l));
-    host.appendChild(document.createTextNode(
-      "(" + pct(RECORD.acc) + " of " + (RECORD.w + RECORD.l) + " games)"));
 
     // Results that arrived after the build are in the figures above. Say
     // which ones: they are the only numbers here the nightly rebuild has
@@ -912,7 +996,12 @@
       "Odds format"));
     var seg = segControl(
       [["edge", "Edge"], ["conf", "Model"], ["gap", "Disagreement"]], sortBy,
-      function (v) { sortBy = v; renderSlate(); }, "Sort by");
+      function (v) {
+        var prev = boardPositions();
+        sortBy = v;
+        renderSlate();
+        flipBoard(prev);
+      }, "Sort by");
     h.appendChild(seg);
     box.appendChild(h);
 
@@ -924,6 +1013,9 @@
     var w = el("div", "pwrap");
     var t = el("table", "ptable");
     var th = el("thead"), htr = el("tr");
+    // The leading cell is the lamp's own column: a board marks a changed
+    // row rather than restyling its edge.
+    htr.appendChild(el("th", "lampcell"));
     ["Pick", "Game", "Model", "Line", "Price", "Need", "Edge",
      "Measured"].forEach(function (x) {
       htr.appendChild(el("th", null, x));
@@ -937,9 +1029,19 @@
       .sort(function (a, b) { return b.L.edge - a.L.edge; });
     rows.forEach(function (r) {
       var rank = ranked.indexOf(r) + 1;
-      var tr = el("tr", (r.L.edge > 0 ? "val " : "") + "jump");
-      tr.title = "Go to " + name(r.g.a) + " at " + name(r.g.h);
+      var was = movedSince(gkey(r.g), r.L);
+      var tr = el("tr", (r.L.edge > 0 ? "val " : "")
+        + (was ? "moved " : "") + "jump");
+      tr.dataset.row = gkey(r.g);
+      tr.title = (was ? "Price moved since you last looked. " : "")
+        + "Go to " + name(r.g.a) + " at " + name(r.g.h);
       tr.addEventListener("click", function () { jumpTo(r.g); });
+      var lc = el("td", "lampcell");
+      if (was) {
+        lc.appendChild(el("i", "lamp"));
+        lc.setAttribute("aria-label", "Price moved since you last looked");
+      }
+      tr.appendChild(lc);
       var p = el("td", "pname");
       if (rank > 0 && rank <= 3) p.appendChild(el("span", "badge", "#" + rank));
       p.appendChild(document.createTextNode(name(r.L.side)));
@@ -953,11 +1055,22 @@
         ev.preventDefault(); ev.stopPropagation(); jumpTo(r.g);
       });
       gc.appendChild(a);
-      gc.appendChild(el("span", "jumpmark", "\u2193"));
+      gc.appendChild(el("span", "jumpmark")).appendChild(icon("jump"));
       tr.appendChild(gc);
       td(tr, pct1(r.L.pm), "num");
       td(tr, pct1(r.L.pk), "num");
-      td(tr, priceShown(r.L.side === r.g.h ? r.L.hml : r.L.aml), "num");
+      var pc = el("td", "num pricecell");
+      if (was) {
+        var parts = was.split("/");
+        var old = r.L.side === r.g.h ? parts[0] : parts[1];
+        var oldN = parseFloat(old);
+        if (isFinite(oldN)) {
+          pc.appendChild(el("span", "was", priceShown(oldN)));
+        }
+      }
+      pc.appendChild(el("b", null,
+        priceShown(r.L.side === r.g.h ? r.L.hml : r.L.aml)));
+      tr.appendChild(pc);
       td(tr, breakEven(r.L.pm), "num zero");
       td(tr, signed(r.L.edge * 100) + "%",
          "num " + (r.L.edge > 0 ? "pos" : "neg"));
@@ -1019,7 +1132,7 @@
         ev.preventDefault(); ev.stopPropagation(); jumpTo(g);
       });
       gc.appendChild(a);
-      gc.appendChild(el("span", "jumpmark", "\u2193"));
+      gc.appendChild(el("span", "jumpmark")).appendChild(icon("jump"));
       tr.appendChild(gc);
 
       var bc = el("td", "bet");
@@ -1087,7 +1200,7 @@
     var days = Math.floor((Date.now() - built.getTime()) / 86400000);
     if (days < 2) return null;                  // a day behind is normal
     var d = el("div", "note note-bad");
-    d.appendChild(el("span", "ic", "!"));
+    d.appendChild(el("span", "ic")).appendChild(icon("alert"));
     var t = el("div");
     t.appendChild(el("b", null, "This page is " + days + " days old."));
     t.appendChild(document.createTextNode(
@@ -1144,7 +1257,10 @@
     seedPrices();
     // Open on today's slate, with finished days reachable to the left.
     state.day = firstUpcoming() || (dayList().length ? dayList()[0].d : null);
-    document.getElementById("asof").textContent = "generated " + DATA.generated;
+    document.getElementById("asof").textContent = "Built " + DATA.generated;
+    document.getElementById("seasonrec").textContent = RECORD.w + "–" + RECORD.l;
+    document.getElementById("seasonpct").textContent =
+      pct(RECORD.acc) + " of " + (RECORD.w + RECORD.l);
     document.getElementById("gen").textContent = DATA.generated;
 
     var om = document.getElementById("oddsMode");
@@ -1154,6 +1270,17 @@
     });
     renderDays();
     renderSlate();
+
+    var sealed = false;
+    function sealSeen() {
+      if (sealed) return;
+      sealed = true;
+      rememberPrices();
+    }
+    window.addEventListener("pagehide", sealSeen);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") sealSeen();
+    });
   }
 
   init();
