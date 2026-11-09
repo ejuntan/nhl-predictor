@@ -21,15 +21,18 @@ keeps its lamp until you have seen it. It refuses the arrangement this
 category always ships — a sidebar, a row of KPI tiles, soft-shadowed cards
 on neutral grey — because a board is read across, not browsed.
 
-OWN-WORLD: Gate-board vernacular. Ink #0B0D10, slate #1C2127, steel #6B7178,
-panel #E6E8EB, surface #FFFFFF, and one saturated alert amber #FFD400 that is
-never decorative. The board itself is always a matte dark panel, the way a
-departure board is dark in a lit concourse, whatever the page's theme around
-it. Division is hairline seam, never card shadow; no rounded-box stack
-anywhere. Barlow Condensed for board rows and display, Barlow for prose,
-Azeret Mono uppercase and letterspaced for every column label, status word
-and code. Figures are tabular and sit in fixed cells so columns align
-absolutely. Green #4FBF84 and red #E06A5C carry hit, miss and sign only.
+OWN-WORLD: Gate-board vernacular rendered as vitreous navy enamel. Board
+#16243d with cream lettering #F0EAD8, page ground #E5E6E2 in light and
+#0F1520 in dark, steel seams. The board is always the enamel panel, the way
+an airport sign was before it was a screen, framed by a seam so it stays a
+panel on a dark page too. One saturated colour, vermilion #E8502A, and it
+carries the negative only: the miss, the losing edge, the situation measured
+to lose. The lamp is cream at full brightness instead, the loudest thing
+available on enamel and colliding with nothing. Division is hairline seam,
+never card shadow; no rounded-box stack. Encode Sans Semi Condensed for
+board rows and display, Hanken Grotesk for prose, Courier Prime uppercase
+and letterspaced for every column label and code, because the pass half of
+this world was a typed document. Figures are tabular in fixed cells.
 
 STORY: The visitor sees a ranked board, reads down the edge column, finds the
 rows whose price moved, and lands on a game card that tells them what the

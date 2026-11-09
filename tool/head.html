@@ -2,56 +2,66 @@
 <title>NHL Daily Predictions</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Encode+Sans+Semi+Condensed:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
 <style>
 /* A slate is a departure board.
    Fixed columns that never move, rows ranked by edge, and a price that has
    changed since you last looked keeps its lamp until you have seen it.
-   The board is always a matte dark panel, the way a departure board is dark
-   in a lit concourse, whatever the page's theme around it. Division is a
-   hairline seam, never a card shadow.
-   Barlow Condensed for board rows and display, Barlow for prose, Azeret Mono
-   uppercase for every column label, status word and code. */
+   The board is vitreous navy enamel with cream lettering, the way an airport
+   sign was before it was a screen, whatever the page's theme around it.
+   Division is a hairline seam, never a card shadow.
+
+   Type comes from the same place: Encode Sans Semi Condensed for the board
+   rows and display, the weight and width of signage; Hanken Grotesk for
+   prose; Courier Prime, uppercase and letterspaced, for every column label
+   and code, because the pass half of this world was a typed document.
+
+   One saturated colour, vermilion, and it carries the negative: the miss,
+   the losing edge, the situation measured to lose. On a page whose honest
+   message is that most of these bets lose, that is the signal worth the
+   ink. The lamp is cream at full brightness instead, which on navy is the
+   loudest thing available and collides with nothing. */
 :root {
   color-scheme: light;
   /* page */
-  --bg: #e4e6ea; --surface: #ffffff; --surface2: #f4f5f7;
-  --fg: #0b0d10; --muted: #5a626b; --faint: #868e98;
-  --seam: #c9ced5; --seam2: #dde1e6;
-  /* the board: a matte dark panel in both themes */
-  --board: #1c2127; --board2: #232931; --board3: #2f3741;
-  --board-row: #262d36; --board-seam: #343c46;
-  --board-fg: #eef1f4; --board-mut: #959da7; --board-faint: #717a85;
-  /* one saturated alert, never decorative */
-  --alert: #ffd400; --alert-ink: #0b0d10; --alert-soft: #fff6cc;
-  --good: #1d7a4e; --good-soft: #e3f2ea;
-  --bad: #b3372a; --bad-soft: #fae9e7;
-  --board-good: #4fbf84; --board-bad: #e8796a; --board-alert: #ffd400;
-  --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
-  --sans: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "Azeret Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --r: 3px;
+  --bg: #e5e6e2; --surface: #f8f8f6; --surface2: #eeefeb;
+  --fg: #141b26; --muted: #49515f; --faint: #5d6574;
+  --seam: #c7c9c3; --seam2: #dcded8;
+  /* the board: vitreous navy enamel in both themes */
+  --board: #16243d; --board2: #1d2e4b; --board3: #273b5c;
+  --board-row: #1b2c48; --board-seam: #31466a;
+  --board-fg: #f0ead8; --board-mut: #9aa6bb; --board-faint: #848fa8;
+  /* the lamp is cream at full brightness; it marks change, not danger */
+  --lamp: #fff7e2; --alert-ink: #16243d;
+  /* one saturated colour, and it carries the negative */
+  --alert: #e8502a; --alert-soft: #fae7df;
+  --good: #1d6b4f; --good-soft: #e2efe8;
+  --bad: #a93718; --bad-soft: #fae7df;
+  --board-good: #63b894; --board-bad: #f2765a;
+  --cond: "Encode Sans Semi Condensed", "Arial Narrow", sans-serif;
+  --sans: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Courier Prime", ui-monospace, "Courier New", monospace;
+  --r: 2px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0b0d10; --surface: #15191e; --surface2: #1a1f25;
-    --fg: #eef1f4; --muted: #99a1ab; --faint: #6d7680;
-    --seam: #2b323a; --seam2: #212830;
-    --board: #1c2127; --board2: #232931; --board-seam: #343c46;
-    --alert-soft: #332b05;
-    --good: #4fbf84; --good-soft: #10291d;
-    --bad: #e8796a; --bad-soft: #2e1512;
+    --bg: #0f1520; --surface: #161d2b; --surface2: #1a2232;
+    --fg: #e9e6dc; --muted: #9aa4b6; --faint: #8591a6;
+    --seam: #2a3448; --seam2: #1f283a;
+    --alert-soft: #371a10;
+    --good: #63b894; --good-soft: #10281f;
+    --bad: #f2765a; --bad-soft: #371a10;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0b0d10; --surface: #15191e; --surface2: #1a1f25;
-  --fg: #eef1f4; --muted: #99a1ab; --faint: #6d7680;
-  --seam: #2b323a; --seam2: #212830;
-  --alert-soft: #332b05;
-  --good: #4fbf84; --good-soft: #10291d;
-  --bad: #e8796a; --bad-soft: #2e1512;
+  --bg: #0f1520; --surface: #161d2b; --surface2: #1a2232;
+  --fg: #e9e6dc; --muted: #9aa4b6; --faint: #8591a6;
+  --seam: #2a3448; --seam2: #1f283a;
+  --alert-soft: #371a10;
+  --good: #63b894; --good-soft: #10281f;
+  --bad: #f2765a; --bad-soft: #371a10;
 }
 * { box-sizing: border-box; }
 /* A class that sets `display` beats the browser's own [hidden] rule, so
@@ -68,7 +78,7 @@ p { margin: 0; }
 input, select, button { font: inherit; color: inherit; }
 button { cursor: pointer; }
 /* The surfaces the browser draws are part of the design. */
-::selection { background: var(--alert); color: var(--alert-ink); }
+::selection { background: var(--board); color: var(--board-fg); }
 :focus-visible { outline: 2px solid var(--alert); outline-offset: 2px; }
 input { caret-color: var(--alert); }
 * { scrollbar-width: thin; scrollbar-color: var(--seam) transparent; }
@@ -79,8 +89,8 @@ input { caret-color: var(--alert); }
 /* mono labels: the board's own voice */
 .lbl, .stat .k, .goalie .k, .ptable thead th, .prices h4, .lf .k, .day .dw,
 .top .stamp, .striphead .lmuted, .badge, .chip, .side, .flag, .score .ot {
-  font-family: var(--mono); font-weight: 500; text-transform: uppercase;
-  letter-spacing: .1em; font-size: 9.5px; }
+  font-family: var(--mono); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; font-size: 10.5px; }
 .num, .ptable .num, .stat .v, .record .big, .lf, .vs, .score, .day .dd {
   font-variant-numeric: tabular-nums lining-nums; }
 
@@ -115,10 +125,10 @@ input { caret-color: var(--alert); }
 .day .dn { display: block; font-family: var(--mono); font-size: 9px;
   color: var(--faint); letter-spacing: .04em; }
 .day:hover { background: var(--surface2); }
-.day[aria-pressed=true] { background: var(--alert); color: var(--alert-ink); }
-.day[aria-pressed=true] .dw, .day[aria-pressed=true] .dn { color: #4a3f00; }
+.day[aria-pressed=true] { background: var(--board); color: var(--board-fg); }
+.day[aria-pressed=true] .dw, .day[aria-pressed=true] .dn { color: var(--board-mut); }
 .day.past { background: var(--surface2); }
-.day.past[aria-pressed=true] { background: var(--alert); }
+.day.past[aria-pressed=true] { background: var(--board); }
 .day.hit .dn { color: var(--good); }
 .day.miss .dn { color: var(--bad); }
 .day .dn.livecount { color: var(--bad); }
@@ -152,7 +162,7 @@ input { caret-color: var(--alert); }
 .striphead h3 { font-size: 17px; letter-spacing: .04em; }
 .lmuted { color: var(--faint); font-size: 12px; }
 .striphead .lmuted { font-size: 9.5px; }
-.strip .pwrap { border: 1px solid var(--board); }
+.strip .pwrap { border: 1px solid var(--board-seam); }
 .strip .ptable { background: var(--board); color: var(--board-fg);
   width: 100%; border-collapse: collapse; }
 .strip .ptable thead th { background: var(--board2); color: var(--board-mut);
@@ -172,27 +182,40 @@ input { caret-color: var(--alert); }
 .strip tbody tr.jump:hover td { background: var(--board3); }
 .strip .gl { color: var(--board-mut); text-decoration: none;
   font-family: var(--mono); font-size: 11px; letter-spacing: .06em; }
-.strip tbody tr.jump:hover .gl { color: var(--alert); }
+.strip tbody tr.jump:hover .gl { color: var(--lamp); }
 .jumpmark { color: var(--board-faint); padding-left: 5px;
   display: inline-flex; vertical-align: -2px; }
-.strip tbody tr.jump:hover .jumpmark { color: var(--alert); }
+.strip tbody tr.jump:hover .jumpmark { color: var(--lamp); }
 .strip .pos { color: var(--board-good); }
 .strip .neg { color: var(--board-bad); }
-.strip .zero { color: var(--board-faint); }
-.strip .badge { margin-right: 7px; }
+.strip .zero { color: var(--board-mut); }
+.strip .badge { margin-right: 7px; background: var(--board-fg);
+  color: var(--board); }
+.strip td.status { font-family: var(--mono); font-weight: 700; font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: .07em; }
+.strip td.status.st-bad { color: var(--board-bad); }
+.strip td.status.st-none { color: var(--board-faint); }
+.strip td.status.st-open { color: var(--board-fg); }
+/* the same verdict, carried under the pick where there is no column for it */
+.st-inline { display: none; font-family: var(--mono); font-weight: 700;
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em;
+  margin-top: 2px; }
+.st-inline.st-bad { color: var(--board-bad); }
+.st-inline.st-none { color: var(--board-faint); }
+.st-inline.st-open { color: var(--board-mut); }
 .strip .lwhy { color: var(--muted); }
 
 /* the lamp: its own fixed cell, lit until this viewer has seen the change */
 .lampcell { width: 16px; padding-right: 0 !important; }
-.lamp { display: block; width: 7px; height: 7px; background: var(--alert);
-  box-shadow: 0 0 7px 1px rgba(255, 212, 0, .55); }
+.lamp { display: block; width: 7px; height: 7px; background: var(--lamp);
+  box-shadow: 0 0 8px 2px rgba(255, 247, 226, .5); }
 .lampcell .was { display: none; }
-tr.moved .gl { color: var(--alert); }
+tr.moved .gl { color: var(--lamp); }
 .pricecell .was { font-family: var(--mono); font-size: 9.5px;
   color: var(--board-faint); text-decoration: line-through;
   margin-right: 6px; letter-spacing: .04em; }
-tr.moved .pricecell b { background: var(--alert); color: var(--alert-ink);
-  font-weight: 600; padding: 1px 5px; }
+tr.moved .pricecell b { background: var(--lamp); color: var(--board);
+  font-weight: 700; padding: 1px 5px; }
 
 /* the one authored moment: rows settle into their new rank */
 @media (prefers-reduced-motion: no-preference) {
@@ -202,6 +225,12 @@ tr.moved .pricecell b { background: var(--alert); color: var(--alert-ink);
 
 /* ---------- generic tables (props, saves, past) ---------- */
 .pwrap { overflow-x: auto; }
+/* A scrollable table announces itself rather than ending in mid-air. */
+.pwrap { position: relative; }
+.scrollhint { display: none; font-family: var(--mono); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em; font-size: 10px;
+  color: var(--faint); padding: 5px 2px 0; }
+.pwrap.over + .scrollhint { display: block; }
 .ptable { width: 100%; border-collapse: collapse; }
 .ptable th, .ptable td { padding: 6px 9px; text-align: right; white-space: nowrap;
   border-bottom: 1px solid var(--seam2); font-size: 13px; }
@@ -212,22 +241,25 @@ tr.moved .pricecell b { background: var(--alert); color: var(--alert-ink);
   letter-spacing: .02em; }
 .ptable .pname { font-weight: 500; }
 .ptable tbody tr:hover td { background: var(--surface2); }
-.badge { color: var(--alert-ink); background: var(--alert); padding: 1px 4px;
+.badge { color: var(--bg); background: var(--fg); padding: 1px 4px;
   margin-right: 6px; }
 .bet { white-space: nowrap; }
 .side { display: inline-block; padding: 2px 5px; margin-right: 6px;
   vertical-align: 1px; font-size: 9px; }
 .side-u { background: var(--board); color: var(--board-fg); }
 .side-o { background: var(--good); color: #fff; }
+/* inside the board the row is already navy, so the under chip needs the
+   inverse or it stops being a chip at all */
+.strip .side-u { background: var(--board-fg); color: var(--board); }
 
 /* ---------- game cards: panels divided by seams, not shadows ---------- */
 .game { background: var(--surface); border: 1px solid var(--seam);
   margin-top: -1px; padding: 15px 17px; scroll-margin-top: 14px; }
 .game:first-of-type { margin-top: 0; }
-@keyframes land { from { background: var(--alert-soft); } to { background: var(--surface); } }
+@keyframes land { from { background: var(--surface2); } to { background: var(--surface); } }
 .game.land { animation: land 1.5s ease-out; }
 @media (prefers-reduced-motion: reduce) {
-  .game.land { animation: none; outline: 2px solid var(--alert); }
+  .game.land { animation: none; outline: 2px solid var(--board); }
 }
 .ghead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
   margin-bottom: 10px; }
@@ -266,7 +298,7 @@ tr.moved .pricecell b { background: var(--alert); color: var(--alert-ink);
 .goalie .k { display: block; color: var(--muted); }
 .goalie .v { font-weight: 500; }
 .flag { display: inline-block; padding: 1px 5px; margin-left: 5px;
-  background: var(--alert); color: var(--alert-ink); vertical-align: 1px; }
+  background: var(--board); color: var(--board-fg); vertical-align: 1px; }
 
 details.props { margin-top: 12px; border-top: 1px solid var(--seam2);
   padding-top: 10px; }
@@ -286,8 +318,8 @@ details[open] > summary .caret { transform: rotate(90deg); }
 .ptable .odds-in, .prices .odds-in { width: 68px; background: var(--surface);
   border: 1px solid var(--seam); padding: 4px 7px; font-family: var(--mono);
   font-size: 12px; text-align: right; }
-.prices .odds-in.has, .ptable .odds-in.has { border-color: var(--alert);
-  box-shadow: inset 0 -2px 0 var(--alert); }
+.prices .odds-in.has, .ptable .odds-in.has { border-color: var(--fg);
+  box-shadow: inset 0 -2px 0 var(--fg); }
 .chip { display: inline-block; padding: 2px 6px; border: 1px solid currentColor; }
 .chip-play { color: var(--good); background: var(--good-soft); }
 .chip-thin { color: var(--muted); }
@@ -309,7 +341,7 @@ details[open] > summary .caret { transform: rotate(90deg); }
   font-family: var(--mono); font-size: 9.5px; text-transform: uppercase;
   letter-spacing: .1em; color: var(--muted); }
 .seg button:hover { color: var(--fg); }
-.seg button[aria-pressed=true] { background: var(--alert); color: var(--alert-ink); }
+.seg button[aria-pressed=true] { background: var(--board); color: var(--board-fg); }
 .striphead .seg { background: var(--surface); }
 
 /* ---------- notes ---------- */
@@ -320,7 +352,7 @@ details[open] > summary .caret { transform: rotate(90deg); }
 .note .ic { flex: none; display: inline-flex; margin-top: 1px; }
 .note-bad { background: var(--bad-soft); border-color: var(--bad); }
 .note-bad .ic { color: var(--bad); }
-.note-info { background: var(--alert-soft); border-color: var(--alert); }
+.note-info { background: var(--surface2); border-color: var(--board); }
 .note-info .ic { color: var(--muted); }
 
 /* ---------- measured-record disclosure ---------- */
@@ -356,13 +388,13 @@ details[open] > summary .caret { transform: rotate(90deg); }
 .lwhy { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin: 8px 0 0; }
 
 /* ---------- finished games ---------- */
-.chip-live { color: var(--alert-ink); background: var(--alert); border-color: var(--alert); }
+.chip-live { color: var(--bad); border-color: var(--bad); }
 .res { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
 .res .chip-hit { color: var(--good); background: var(--good-soft); }
 .res .chip-miss { color: var(--bad); background: var(--bad-soft); }
 .score { display: flex; align-items: baseline; gap: 11px; font-family: var(--cond);
   font-size: 30px; font-weight: 700; margin: 3px 0 11px; letter-spacing: .02em; }
-.score .ot { background: var(--alert); color: var(--alert-ink); padding: 2px 5px;
+.score .ot { background: var(--board); color: var(--board-fg); padding: 2px 5px;
   align-self: center; }
 .score .wl { color: var(--faint); font-weight: 500; }
 .score .win { color: var(--fg); }
@@ -385,8 +417,23 @@ details.limits p b { color: var(--fg); }
 .empty { background: var(--surface); border: 1px solid var(--seam);
   padding: 34px; text-align: center; color: var(--muted); }
 
+@media (max-width: 560px) {
+  /* Below this the pick, the price, the edge and the verdict are the whole
+     job; the matchup is one tap away on the row itself. */
+  .hide-xs { display: none; }
+  .strip .ptable td, .strip .ptable thead th { padding: 9px 6px; }
+  .strip .ptable td.pname { white-space: normal; }
+  .st-inline { display: block; }
+}
 @media (max-width: 760px) {
   .hide-s { display: none; }
+  .strip .ptable td, .strip .ptable thead th { padding: 9px 6px; }
+  .strip .ptable td { font-size: 15px; }
+  /* the verdict is two words; let it take two lines rather than a column */
+  .strip td.status { white-space: normal; line-height: 1.25; }
+  /* the masthead is one band, so its parts stack rather than overflow */
+  .top { gap: 4px 14px; }
+  .top h1 { flex: 1 1 100%; }
   .ghead .pick { margin-left: 0; width: 100%; }
   .res { margin-left: 0; }
   .top .seasonrec { margin-left: 0; width: 100%; }

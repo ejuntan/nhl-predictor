@@ -246,6 +246,20 @@
       });
   }
 
+  /** A table wider than its container says so. Without this the board
+   *  simply ended at the viewport edge on a phone and the price, edge and
+   *  verdict columns were invisible and undiscoverable. */
+  function markScrollable(wrap, what) {
+    var hint = el("p", "scrollhint", "Scroll sideways for " + what);
+    wrap.insertAdjacentElement("afterend", hint);
+    function check() {
+      wrap.classList.toggle("over", wrap.scrollWidth > wrap.clientWidth + 2);
+    }
+    check();
+    requestAnimationFrame(check);
+    window.addEventListener("resize", check);
+  }
+
   function el(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -985,6 +999,19 @@
 
   var sortBy = "edge";
 
+  /** The board's own verdict, in a word. Only three are possible and each
+   *  is already measured: the bucket whose whole interval sits below zero
+   *  is a loss, a price at or above the model's number is no edge, and
+   *  everything left is an edge nobody has established. */
+  function statusWord(r) {
+    var b = BUCKETS[r.L.b] || {};
+    if (b.roi !== undefined && b.ci !== undefined && b.roi + b.ci < 0) {
+      return { txt: "Measured loss", cls: "st-bad" };
+    }
+    if (r.L.edge <= 0) return { txt: "No edge", cls: "st-none" };
+    return { txt: "Unproven", cls: "st-open" };
+  }
+
   function rankedTable(rows) {
     var box = el("div", "strip");
     var h = el("div", "striphead");
@@ -1016,9 +1043,10 @@
     // The leading cell is the lamp's own column: a board marks a changed
     // row rather than restyling its edge.
     htr.appendChild(el("th", "lampcell"));
-    ["Pick", "Game", "Model", "Line", "Price", "Need", "Edge",
-     "Measured"].forEach(function (x) {
-      htr.appendChild(el("th", null, x));
+    [["Pick", ""], ["Game", "hide-xs"], ["Model", "hide-s"], ["Line", "hide-s"],
+     ["Price", ""], ["Break-even", "hide-s"], ["Edge", ""],
+     ["Status", "hide-xs"], ["Measured", "hide-s"]].forEach(function (x) {
+      htr.appendChild(el("th", x[1], x[0]));
     });
     th.appendChild(htr);
     t.appendChild(th);
@@ -1042,13 +1070,15 @@
         lc.setAttribute("aria-label", "Price moved since you last looked");
       }
       tr.appendChild(lc);
+      var sw = statusWord(r);
       var p = el("td", "pname");
       if (rank > 0 && rank <= 3) p.appendChild(el("span", "badge", "#" + rank));
       p.appendChild(document.createTextNode(name(r.L.side)));
+      p.appendChild(el("span", "st-inline " + sw.cls, sw.txt));
       tr.appendChild(p);
       // A real link in the Game cell, so the jump is reachable from the
       // keyboard and not only from a click anywhere on the row.
-      var gc = el("td");
+      var gc = el("td", "hide-xs");
       var a = el("a", "gl", r.g.a + " @ " + r.g.h);
       a.href = "#" + anchorId(r.g);
       a.addEventListener("click", function (ev) {
@@ -1057,8 +1087,8 @@
       gc.appendChild(a);
       gc.appendChild(el("span", "jumpmark")).appendChild(icon("jump"));
       tr.appendChild(gc);
-      td(tr, pct1(r.L.pm), "num");
-      td(tr, pct1(r.L.pk), "num");
+      td(tr, pct1(r.L.pm), "num hide-s");
+      td(tr, pct1(r.L.pk), "num hide-s");
       var pc = el("td", "num pricecell");
       if (was) {
         var parts = was.split("/");
@@ -1071,10 +1101,13 @@
       pc.appendChild(el("b", null,
         priceShown(r.L.side === r.g.h ? r.L.hml : r.L.aml)));
       tr.appendChild(pc);
-      td(tr, breakEven(r.L.pm), "num zero");
+      td(tr, breakEven(r.L.pm), "num zero hide-s");
       td(tr, signed(r.L.edge * 100) + "%",
          "num " + (r.L.edge > 0 ? "pos" : "neg"));
-      var c = el("td");
+      var sc = el("td", "status hide-xs " + sw.cls);
+      sc.appendChild(document.createTextNode(sw.txt));
+      tr.appendChild(sc);
+      var c = el("td", "hide-s");
       var chip = el("span", "chip " + r.ch.cls, r.ch.txt);
       chip.title = r.ch.why;
       c.appendChild(chip);
@@ -1084,6 +1117,7 @@
     t.appendChild(tb);
     w.appendChild(t);
     box.appendChild(w);
+    markScrollable(w, "the matchup, the model's number and the record");
 
     var est = rows.filter(function (r) {
       return (r.ch.roi + (BUCKETS[r.L.b] || {}).ci) < 0;
@@ -1112,8 +1146,12 @@
     var w = el("div", "pwrap");
     var t = el("table", "ptable");
     var th = el("thead"), htr = el("tr");
-    ["Player", "Game", "The bet", "Model", "Recent form", "Shots",
-     "Needs"].forEach(function (x) { htr.appendChild(el("th", null, x)); });
+    // One name for one quantity, the product's own.
+    [["Player", ""], ["Game", ""], ["The bet", ""], ["Model", ""],
+     ["Recent form", "hide-s"], ["Shots", "hide-s"],
+     ["Break-even", ""]].forEach(function (x) {
+      htr.appendChild(el("th", x[1], x[0]));
+    });
     th.appendChild(htr);
     t.appendChild(th);
     var tb = el("tbody");
@@ -1142,14 +1180,15 @@
       tr.appendChild(bc);
 
       td(tr, pct1(r.p), "num");
-      td(tr, pct1(r.b), "num zero");
-      td(tr, r.xs.toFixed(2) + " vs " + r.es.toFixed(2), "num zero");
+      td(tr, pct1(r.b), "num zero hide-s");
+      td(tr, r.xs.toFixed(2) + " vs " + r.es.toFixed(2), "num zero hide-s");
       td(tr, priceShown(r.be), "num");
       tb.appendChild(tr);
     });
     t.appendChild(tb);
     w.appendChild(t);
     box.appendChild(w);
+    markScrollable(w, "the rest of each row");
 
     var why = el("p", "lwhy");
     why.appendChild(document.createTextNode(
@@ -1180,8 +1219,11 @@
       frag.appendChild(e);
       return frag;
     }
-    frag.appendChild(evidencePanel());
+    // The panel annotates the measured column, so it reads better beneath
+    // the board than above it -- and keeping it off the top is what lets
+    // the board itself clear the fold.
     frag.appendChild(rankedTable(rows));
+    frag.appendChild(evidencePanel());
     return frag;
   }
 
