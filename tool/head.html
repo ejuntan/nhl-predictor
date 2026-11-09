@@ -2,7 +2,7 @@
 <title>NHL Daily Predictions</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <style>
 /* A slate is a departure board.
    Fixed columns that never move, rows ranked by edge, and a price that has
@@ -11,8 +11,10 @@
    sign was before it was a screen, whatever the page's theme around it.
    Division is a hairline seam, never a card shadow.
 
-   Barlow Condensed for board rows and display, Barlow for prose, Azeret
-   Mono uppercase for every column label, status word and code.
+   Archivo for headings, scores and board rows, Source Sans 3 for prose,
+   Spline Sans Mono uppercase for every column label, status word and code.
+   Archivo is not a condensed face, so the board rows buy their width back
+   from negative tracking rather than lose a column.
 
    One saturated colour, vermilion, and it carries the negative: the miss,
    the losing edge, the situation measured to lose. On a page whose honest
@@ -36,9 +38,9 @@
   --good: #1d6b4f; --good-soft: #e2efe8;
   --bad: #a93718; --bad-soft: #fae7df;
   --board-good: #63b894; --board-bad: #f2765a;
-  --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
-  --sans: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "Azeret Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --cond: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --sans: "Source Sans 3", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Spline Sans Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --r: 2px;
 }
 @media (prefers-color-scheme: dark) {
@@ -71,7 +73,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans);
 .wrap { max-width: 1240px; margin-inline: auto; padding-inline: 20px;
   padding-block: 0 64px; }
 h1, h2, h3, h4 { margin: 0; font-family: var(--cond); font-weight: 700;
-  text-transform: uppercase; letter-spacing: .01em; }
+  letter-spacing: -.02em; }
 p { margin: 0; }
 input, select, button { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -97,7 +99,7 @@ input { caret-color: var(--alert); }
   border-bottom: 3px solid var(--alert); padding-inline: 20px; }
 .top { display: flex; align-items: center; gap: 10px 20px; flex-wrap: wrap;
   padding: 13px 0; max-width: 1200px; margin-inline: auto; }
-.top h1 { font-size: 23px; font-weight: 700; letter-spacing: .035em;
+.top h1 { font-size: 23px; font-weight: 700; letter-spacing: -.02em;
   line-height: 1; }
 .top .stamp { color: var(--board-mut); font-size: 9.5px; }
 .top .seasonrec { margin-left: auto; display: flex; align-items: baseline;
@@ -134,7 +136,7 @@ input { caret-color: var(--alert); }
 
 .daybar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   padding: 16px 0 10px; }
-.daybar h2 { font-size: 20px; letter-spacing: .03em; }
+.daybar h2 { font-size: 21px; letter-spacing: -.022em; }
 .daybar .cnt { font-family: var(--mono); text-transform: uppercase;
   letter-spacing: .1em; font-size: 9.5px; color: var(--muted);
   margin-left: 2px; }
@@ -157,7 +159,7 @@ input { caret-color: var(--alert); }
 .strip { margin: 20px 0 0; }
 .striphead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   margin-bottom: 7px; }
-.striphead h3 { font-size: 17px; letter-spacing: .04em; }
+.striphead h3 { font-size: 18px; letter-spacing: -.022em; }
 .lmuted { color: var(--faint); font-size: 12px; }
 .striphead .lmuted { font-size: 9.5px; }
 .strip .pwrap { border: 1px solid var(--board-seam); }
@@ -167,14 +169,13 @@ input { caret-color: var(--alert); }
   border-bottom: 1px solid var(--board-seam); padding: 8px 10px;
   text-align: right; white-space: nowrap; }
 .strip .ptable thead th:nth-child(-n+3) { text-align: left; }
-.strip .ptable td { padding: 9px 10px; text-align: right; white-space: nowrap;
+.strip .ptable td { padding: 9px 9px; text-align: right; white-space: nowrap;
   border-bottom: 1px solid var(--board-seam); font-family: var(--cond);
-  font-size: 16px; font-weight: 500; letter-spacing: .02em;
+  font-size: 15px; font-weight: 500; letter-spacing: -.012em;
   font-variant-numeric: tabular-nums lining-nums; }
 .strip .ptable td:nth-child(-n+3) { text-align: left; }
 .strip .ptable tbody tr:last-child td { border-bottom: 0; }
-.strip .ptable .pname { font-weight: 600; text-transform: uppercase;
-  letter-spacing: .03em; }
+.strip .ptable .pname { font-weight: 600; letter-spacing: -.015em; }
 .strip tbody tr.val td { background: var(--board-row); }
 .strip tbody tr.jump { cursor: pointer; }
 .strip tbody tr.jump:hover td { background: var(--board3); }
@@ -261,8 +262,8 @@ tr.moved .pricecell b { background: var(--lamp); color: var(--board);
 }
 .ghead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
   margin-bottom: 10px; }
-.ghead .matchup { font-family: var(--cond); font-size: 20px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .03em; }
+.ghead .matchup { font-family: var(--cond); font-size: 19px; font-weight: 700;
+  letter-spacing: -.02em; }
 .ghead .matchup .at { color: var(--faint); font-weight: 500; margin: 0 5px;
   text-transform: none; letter-spacing: 0; font-family: var(--sans);
   font-size: 14px; }
@@ -365,7 +366,7 @@ details[open] > summary .caret { transform: rotate(90deg); }
 .evidence[open] > summary::after { content: "HIDE"; }
 .evidence > summary:hover::after { color: var(--fg); }
 .ehead { font-family: var(--cond); font-size: 16px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .03em; }
+  letter-spacing: -.018em; }
 .esum { font-size: 13px; color: var(--muted); }
 .evidence .pwrap { padding: 0 14px; }
 .evidence .lwhy { padding: 0 14px 12px; margin: 8px 0 0; }
@@ -391,7 +392,7 @@ details[open] > summary .caret { transform: rotate(90deg); }
 .res .chip-hit { color: var(--good); background: var(--good-soft); }
 .res .chip-miss { color: var(--bad); background: var(--bad-soft); }
 .score { display: flex; align-items: baseline; gap: 11px; font-family: var(--cond);
-  font-size: 30px; font-weight: 700; margin: 3px 0 11px; letter-spacing: .02em; }
+  font-size: 28px; font-weight: 700; margin: 3px 0 11px; letter-spacing: -.02em; }
 .score .ot { background: var(--board); color: var(--board-fg); padding: 2px 5px;
   align-self: center; }
 .score .wl { color: var(--faint); font-weight: 500; }
@@ -404,9 +405,8 @@ details[open] > summary .caret { transform: rotate(90deg); }
 /* ---------- limits and foot ---------- */
 details.limits { margin-top: 28px; background: var(--surface);
   border: 1px solid var(--seam); padding: 13px 16px; }
-details.limits summary { font-family: var(--cond); font-size: 17px;
-  font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
-  cursor: pointer; }
+details.limits summary { font-family: var(--cond); font-size: 16px;
+  font-weight: 700; letter-spacing: -.018em; cursor: pointer; }
 details.limits p { color: var(--muted); font-size: 13px; line-height: 1.6;
   margin: 11px 0 0; max-width: 88ch; }
 details.limits p b { color: var(--fg); }

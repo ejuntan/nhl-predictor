@@ -29,10 +29,11 @@ panel on a dark page too. One saturated colour, vermilion #E8502A, and it
 carries the negative only: the miss, the losing edge, the situation measured
 to lose. The lamp is cream at full brightness instead, the loudest thing
 available on enamel and colliding with nothing. Division is hairline seam,
-never card shadow; no rounded-box stack. Barlow Condensed for board rows
-and display, Barlow for prose, Azeret Mono uppercase and letterspaced for
-every column label, status word and code. Figures are tabular in fixed
-cells.
+never card shadow; no rounded-box stack. Archivo for headings, scores and
+board rows, Source Sans 3 for prose, Spline Sans Mono uppercase and
+letterspaced for every column label, status word and code. Archivo is not
+condensed, so board rows buy their width from negative tracking rather
+than lose a column. Figures are tabular in fixed cells.
 
 STORY: The visitor sees a ranked board, reads down the edge column, finds the
 rows whose price moved, and lands on a game card that tells them what the
