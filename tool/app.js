@@ -618,25 +618,47 @@
   function overtimeNote(g) {
     if (g.prh === undefined || g.pra === undefined) return null;
     var pickHome = g.ph > 0.5;
-    if (pickHome === (g.lh > g.la)) return null;     // they agree; nothing to say
-    var regHome = g.prh > g.pra;
-    var regName = name(regHome ? g.h : g.a);
+    var regName = name(g.prh > g.pra ? g.h : g.a);
     var pickName = name(pickHome ? g.h : g.a);
+    var hi = pct1(Math.max(g.prh, g.pra));
+    var lo = pct1(Math.min(g.prh, g.pra));
+    // The card prints the expected score to one decimal, so "the expected
+    // score above" is level whenever the two sides round together -- and
+    // then it points at nobody. Saying a team "is the likelier winner,
+    // which is what the expected score above shows" over a 3.3 - 3.3 line
+    // described a number that was not there.
+    var shown = g.la.toFixed(1) === g.lh.toFixed(1);
+    if (!shown && pickHome === (g.lh > g.la)) return null;  // they agree
+    // A level line with a real regulation gap is rounding, not a
+    // contradiction, and the split is already on the card: nothing to add.
+    if (shown && Math.abs(g.prh - g.pra) >= 0.01) return null;
+    var warn = "predicts the overtime winner worse than a coin "
+      + "flip \u2014 49.6% on 357 measured overtimes \u2014 so read this game "
+      + "as a toss-up.";
     var d = el("div", "note note-info");
     d.appendChild(el("span", "ic")).appendChild(icon("alert"));
     var t = el("div");
-    t.appendChild(document.createTextNode("Inside regulation "));
-    t.appendChild(el("b", null, regName));
-    t.appendChild(document.createTextNode(
-      " is the likelier winner, " + pct1(Math.max(g.prh, g.pra)) + " to "
-      + pct1(Math.min(g.prh, g.pra)) + ", which is what the expected score "
-      + "above shows. "));
-    t.appendChild(el("b", null, pickName));
-    t.appendChild(document.createTextNode(
-      " comes out ahead overall only because " + pct(g.ot) + " of games "
-      + "reach overtime and the model favours them there. It predicts the "
-      + "overtime winner worse than a coin flip \u2014 49.6% on 357 measured "
-      + "overtimes \u2014 so read this game as a toss-up."));
+    if (shown) {
+      // Both sides are level on the card and within a point in regulation,
+      // so naming one of them as the beneficiary would be wrong: on most of
+      // these the side the model picks leads regulation too, by a hair.
+      // Name the mechanism instead of a team.
+      t.appendChild(document.createTextNode(
+        "The expected score is level at " + g.lh.toFixed(1) + " apiece, and "
+        + "regulation is within a point as well, " + hi + " to " + lo
+        + ". What separates the two sides overall is the overtime share, "
+        + "which " + pct(g.ot) + " of games reach, and the model " + warn));
+    } else {
+      t.appendChild(document.createTextNode("Inside regulation "));
+      t.appendChild(el("b", null, regName));
+      t.appendChild(document.createTextNode(
+        " is the likelier winner, " + hi + " to " + lo + ", which is what "
+        + "the expected score above shows. "));
+      t.appendChild(el("b", null, pickName));
+      t.appendChild(document.createTextNode(
+        " comes out ahead overall only because " + pct(g.ot) + " of games "
+        + "reach overtime and the model favours them there. It " + warn));
+    }
     d.appendChild(t);
     return d;
   }

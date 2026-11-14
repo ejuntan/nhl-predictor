@@ -79,6 +79,7 @@ games = d["games"]
 miss = [g for g in games if "prh" not in g or "pra" not in g]
 ck("upcoming games without a regulation split", len(miss), 0)
 bad_sum = bad_band = bad_dir = 0
+level = 0
 for g in games:
     if "prh" not in g:
         continue
@@ -89,13 +90,23 @@ for g in games:
     # so it has to sit between the two
     if not (g["prh"] - 1e-6 <= g["ph"] <= g["prh"] + g["ot"] + 1e-6):
         bad_band += 1
-    # the regulation favourite must be the side with the higher rate
-    if (g["prh"] > g["pra"]) != (g["lh"] > g["la"]):
+    # The regulation favourite must be the side with the higher expected
+    # score -- but only where both pairs actually name a side. The expected
+    # score is carried at two decimals, so a game the model sees as all but
+    # even arrives here as 3.27 against 3.27: that names nobody, and a
+    # regulation split of 38.23% against 38.13% is not contradicting it.
+    # Counting those as failures held the publish from 2026-11-14 with a
+    # correct page already built on disk.
+    if g["lh"] == g["la"] or g["prh"] == g["pra"]:
+        level += 1
+    elif (g["prh"] > g["pra"]) != (g["lh"] > g["la"]):
         bad_dir += 1
 ck("rows where regulation + tie does not sum to one", bad_sum, 0)
 ck("rows where the win probability is outside its own band", bad_band, 0)
 ck("rows where the regulation favourite contradicts the expected score",
    bad_dir, 0)
+print(f"      ({level} of {len(games)} name no favourite on one side or the "
+      f"other, so there is no direction to compare)")
 
 print("\nALL LINE CHECKS PASS" if ok else "\nFAILURES PRESENT")
 sys.exit(0 if ok else 1)
