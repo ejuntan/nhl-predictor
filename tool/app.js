@@ -435,6 +435,7 @@
       var c = el("td", "pname");
       c.appendChild(document.createTextNode(r.g));
       if (r.bk) c.appendChild(el("span", "flag", "backup assumed"));
+      else if (r.cf) c.appendChild(el("span", "flag", "confirmed"));
       tr.appendChild(c);
       td(tr, r.t);
       td(tr, r.toi.toFixed(1), "num");
@@ -794,12 +795,14 @@
     // a hidden block on every past card.
     if (!done) {
       var gl = el("div", "goalies");
-      [[g.a, g.ag, g.ab, g.ar], [g.h, g.hg, g.hb, g.hr]].forEach(function (x) {
+      [[g.a, g.ag, g.ab, g.ar, g.ac],
+       [g.h, g.hg, g.hb, g.hr, g.hc]].forEach(function (x) {
         var d = el("div", "goalie");
         d.appendChild(el("span", "k", x[0] + " goalie · " + x[3] +
           (x[3] === 1 ? " day rest" : " days rest")));
         var v = el("span", "v", x[1]);
         if (x[2]) v.appendChild(el("span", "flag", "backup assumed"));
+        else if (x[4]) v.appendChild(el("span", "flag", "confirmed"));
         d.appendChild(v);
         gl.appendChild(d);
       });

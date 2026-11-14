@@ -37,13 +37,41 @@ TEAM_NAMES = {
 }
 
 
+STARTERS = __file__.rsplit("/", 1)[0] + "/data/starters.json"
+
+
+def confirmed_starters():
+    """Starters announced by the club, keyed "date|team".
+
+    The guess below is 64% accurate (MODEL.md section 11), and for a saves
+    price a wrong name is a wrong price rather than a small perturbation.
+    An announced name is a fact, so it wins outright over the heuristic.
+
+    Keyed by date as well as team on purpose: an entry applies to the one
+    game it was written for and cannot leak into a later guess, so a stale
+    file is inert rather than wrong.
+    """
+    try:
+        with open(STARTERS) as f:
+            return {k: v for k, v in json.load(f).items()}
+    except FileNotFoundError:
+        return {}
+
+
+CONFIRMED = confirmed_starters()
+
+
 def probable_starter(gg, team, game_date, played):
     """Guess who starts: the recent workhorse, unless this is a back-to-back.
 
     Real books price the confirmed starter, which is announced a few hours
     before puck drop. Before that, this is the best available guess and the
     single largest source of uncertainty in a pre-announcement prediction.
+    An announced starter in data/starters.json replaces the guess outright.
     """
+    ov = CONFIRMED.get(f"{game_date}|{team}")
+    if ov:
+        return int(ov["player_id"]), "confirmed starter", 1.0
     hist = gg[(gg.team == team) & (gg.date < game_date)].sort_values("date")
     if hist.empty:
         return None, "unknown", 0.0

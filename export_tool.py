@@ -387,6 +387,10 @@ def main():
             "ag": nm.get(str(int(r.a_goalie)), "TBD") if pd.notna(r.a_goalie) else "TBD",
             "hb": int(str(r.h_goalie_label).startswith("backup")),
             "ab": int(str(r.a_goalie_label).startswith("backup")),
+            # An announced starter is a fact rather than a 64% guess, and
+            # the reader should be able to tell the two apart.
+            "hc": int(str(r.h_goalie_label) == "confirmed starter"),
+            "ac": int(str(r.a_goalie_label) == "confirmed starter"),
             "hr": int(r.h_rest), "ar": int(r.a_rest),
         })
 
@@ -426,6 +430,7 @@ def main():
             # workload, so a wrong name is a wrong number rather than a
             # small perturbation.
             "bk": int(str(r.label).startswith("backup")),
+            "cf": int(str(r.label) == "confirmed starter"),
             "toi": round(float(r.exp_toi_min), 1),
             "xs": round(float(r.mu), 2),
             "p245": round(float(r.p245), 4),
