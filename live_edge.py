@@ -81,6 +81,13 @@ def main(days=4):
         print("no ESPN events for those dates")
         return
     od = odds_for(sb.event_id.tolist())
+    # Books post NHL lines a day or two out, so an early run can find
+    # events with no odds attached at all. pd.DataFrame([]) then has no
+    # columns and the merge below died with KeyError: 'event_id', which
+    # left the previous run's prices in place to be published as current.
+    if od.empty:
+        print("ESPN listed those games but no book has posted a price yet")
+        return
     m = sb.merge(od, on="event_id").merge(
         live[["date", "home", "away", "p_home", "exp_total", "h_goalie_name",
               "a_goalie_name", "h_goalie_label", "a_goalie_label"]],

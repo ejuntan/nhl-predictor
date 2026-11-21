@@ -281,19 +281,30 @@ VALUE_PICKS = {"n": 577, "win": 0.532, "roi": -0.026,
                "lo": -0.1021, "hi": 0.0503}
 
 
-def line_payload():
+def line_payload(valid_keys=None):
     """Posted prices for the upcoming slate, if they have been fetched.
 
     Prices are a snapshot: `live_edge.py` reads them live, and from the
     moment this payload is written they are historical. The page says so.
+
+    `valid_keys` is the upcoming slate. A price is only carried when its
+    game is still in that slate, because data/live_edge.pkl survives a
+    failed odds fetch: on 2026-11-20 live_edge.py crashed and this
+    function published twelve prices for games that had already been
+    played. The page should fall back to showing no prices, which is true,
+    rather than yesterday's, which is not.
     """
     try:
         d = pd.read_pickle("data/live_edge.pkl")
     except FileNotFoundError:
         return {}, None
     out = {}
+    dropped = 0
     for r in d.itertuples(index=False):
         key = r.date + "|" + r.away + r.home
+        if valid_keys is not None and key not in valid_keys:
+            dropped += 1
+            continue
         # A pick'em is not the market naming an underdog, so the dog
         # bucket needs the market to actually favour the other side. Those
         # games land in "thin", which is where a coin-flip belongs anyway.
@@ -315,6 +326,9 @@ def line_payload():
             "edge": round(float(r.edge), 4),
             "b": bucket,
         }
+    if dropped:
+        print(f"  dropped {dropped} stored price(s) whose game is no longer "
+              f"on the slate")
     return out, str(d.attrs.get("fetched_at", ""))
 
 
@@ -441,7 +455,8 @@ def main():
     tops = top_props(p)
 
     past = past_payload(nm)
-    lines, line_at = line_payload()
+    lines, line_at = line_payload({g["d"] + "|" + g["a"] + g["h"]
+                                   for g in games})
     payload = {
         "asof": str(live.date.min()),
         "generated": str(pd.Timestamp.now().date()),
